@@ -13,7 +13,7 @@ const LOG_LEVEL = process.env.LOG_LEVEL || 'info';
 
 // DeepSeek API 配置 - 从环境变量读取，支持Railway、Render等平台
 const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
-const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || 'sk-7fdb436ed0264313bf9d3dfe76a01169';
+const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || 'sk-fa24b5b42cf949839f0e5a2063c00a6b';
 
 // CORS配置 - 从环境变量读取允许的域名
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS 
