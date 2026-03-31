@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>按钮功能测试 - 网络部署版</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-area {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background: #007bff;
+            color: white;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .log {
+            background: #333;
+            color: #0f0;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            min-height: 100px;
+            margin-top: 20px;
+            overflow-y: auto;
+        }
+        .config-area {
+            background: #e9f7fe;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border-left: 5px solid #1890ff;
+        }
+        .config-area label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .config-area input {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+    </style>
+    <!-- 引入配置文件 -->
+    <script src="config.js"></script>
+</head>
+<body>
+    <h1>按钮功能测试 - 网络部署版</h1>
+    
+    <div class="config-area">
+        <h3>API 配置</h3>
+        <label for="api-base-url">API 服务器地址:</label>
+        <input type="text" id="api-base-url" placeholder="例如: https://your-api-domain.com/api" value="https://your-api-domain.com/api">
+        <button id="save-config">保存配置</button>
+        <div id="config-status" style="margin-top: 10px;"></div>
+        <p style="font-size: 0.9rem; color: #666; margin-top: 10px;">
+            提示：请将 <code>your-api-domain.com</code> 替换为您的实际后端服务器地址。<br>
+            本地开发可使用 <code>http://localhost:3001/api</code>
+        </p>
+    </div>
+    
+    <div class="test-area">
+        <h2>测试1: 普通按钮点击</h2>
+        <button id="test-btn1">点击我测试</button>
+        <button id="test-btn2" disabled>禁用按钮</button>
+        <button id="test-btn3">另一个按钮</button>
+    </div>
+    
+    <div class="test-area">
+        <h2>测试2: 模拟工作流按钮</h2>
+        <textarea id="requirement" style="width:100%; height:100px; margin-bottom:10px;">测试创意要求</textarea>
+        <button id="search-btn">开始搜索并生成创意</button>
+        <button id="regenerate-ideas">重新生成创意</button>
+        <button id="generate-scripts" disabled>生成脚本</button>
+        <button id="regenerate-scripts">重新生成脚本</button>
+    </div>
+    
+    <div class="test-area">
+        <h2>测试3: API连接测试</h2>
+        <button id="api-test">测试API连接</button>
+        <div id="api-status">未测试</div>
+    </div>
+    
+    <div class="test-area">
+        <h2>事件日志</h2>
+        <div class="log" id="event-log">日志开始...\n</div>
+    </div>
+
+    <script>
+        // 从配置文件或输入框获取API地址
+        function getApiBaseUrl() {
+            const config = window.ROK_CONFIG || {};
+            let apiUrl = document.getElementById('api-base-url').value.trim();
+            
+            // 如果输入框为空，使用配置文件的值
+            if (!apiUrl || apiUrl === 'https://your-api-domain.com/api') {
+                apiUrl = config.API_BASE_URL || 'https://your-api-domain.com/api';
+                document.getElementById('api-base-url').value = apiUrl;
+            }
+            
+            return apiUrl;
+        }
+        
+        // 保存配置到本地存储
+        function saveConfig() {
+            const apiUrl = document.getElementById('api-base-url').value.trim();
+            localStorage.setItem('rok_api_base_url', apiUrl);
+            document.getElementById('config-status').innerHTML = 
+                `<span style="color: green;">✅ 配置已保存: ${apiUrl}</span>`;
+            console.log('配置已保存:', apiUrl);
+            
+            // 3秒后清除提示
+            setTimeout(() => {
+                document.getElementById('config-status').innerHTML = '';
+            }, 3000);
+        }
+        
+        // 加载配置
+        function loadConfig() {
+            const savedUrl = localStorage.getItem('rok_api_base_url');
+            if (savedUrl) {
+                document.getElementById('api-base-url').value = savedUrl;
+                console.log('配置已加载:', savedUrl);
+            }
+        }
+        
+        const eventLog = document.getElementById('event-log');
+        
+        function log(message) {
+            eventLog.textContent += new Date().toLocaleTimeString() + ': ' + message + '\n';
+            eventLog.scrollTop = eventLog.scrollHeight;
+        }
+        
+        // 测试1: 普通按钮
+        document.getElementById('test-btn1').addEventListener('click', () => {
+            log('测试按钮1被点击');
+        });
+        
+        document.getElementById('test-btn3').addEventListener('click', () => {
+            log('测试按钮3被点击');
+        });
+        
+        // 测试2: 工作流按钮
+        const searchBtn = document.getElementById('search-btn');
+        const regenerateIdeasBtn = document.getElementById('regenerate-ideas');
+        const generateScriptsBtn = document.getElementById('generate-scripts');
+        const regenerateScriptsBtn = document.getElementById('regenerate-scripts');
+        const requirementTextarea = document.getElementById('requirement');
+        
+        searchBtn.addEventListener('click', () => {
+            log('搜索按钮被点击: ' + requirementTextarea.value.substring(0, 50));
+            // 模拟加载
+            searchBtn.innerHTML = '加载中...';
+            searchBtn.disabled = true;
+            
+            setTimeout(() => {
+                log('搜索完成，启用生成脚本按钮');
+                generateScriptsBtn.disabled = false;
+                searchBtn.innerHTML = '开始搜索并生成创意';
+                searchBtn.disabled = false;
+            }, 1000);
+        });
+        
+        regenerateIdeasBtn.addEventListener('click', () => {
+            log('重新生成创意按钮被点击');
+            regenerateIdeasBtn.innerHTML = '重新生成中...';
+            regenerateIdeasBtn.disabled = true;
+            
+            setTimeout(() => {
+                log('创意重新生成完成');
+                regenerateIdeasBtn.innerHTML = '重新生成创意';
+                regenerateIdeasBtn.disabled = false;
+            }, 1500);
+        });
+        
+        generateScriptsBtn.addEventListener('click', () => {
+            log('生成脚本按钮被点击');
+            generateScriptsBtn.innerHTML = '生成中...';
+            generateScriptsBtn.disabled = true;
+            
+            setTimeout(() => {
+                log('脚本生成完成');
+                generateScriptsBtn.innerHTML = '生成脚本';
+                generateScriptsBtn.disabled = false;
+            }, 2000);
+        });
+        
+        regenerateScriptsBtn.addEventListener('click', () => {
+            log('重新生成脚本按钮被点击');
+            regenerateScriptsBtn.innerHTML = '重新生成中...';
+            regenerateScriptsBtn.disabled = true;
+            
+            setTimeout(() => {
+                log('脚本重新生成完成');
+                regenerateScriptsBtn.innerHTML = '重新生成脚本';
+                regenerateScriptsBtn.disabled = false;
+            }, 1500);
+        });
+        
+        // 测试3: API连接
+        document.getElementById('api-test').addEventListener('click', async () => {
+            const apiUrl = getApiBaseUrl();
+            log('测试API连接: ' + apiUrl);
+            const statusDiv = document.getElementById('api-status');
+            statusDiv.innerHTML = '测试中...';
+            
+            try {
+                const response = await fetch(apiUrl + '/health');
+                if (response.ok) {
+                    const data = await response.json();
+                    log('API连接成功: ' + data.status);
+                    statusDiv.innerHTML = `<span style="color: green;">✅ 连接成功: ${data.service || '未知服务'}</span>`;
+                } else {
+                    throw new Error('HTTP ' + response.status);
+                }
+            } catch (error) {
+                log('API连接失败: ' + error.message);
+                statusDiv.innerHTML = `<span style="color: red;">❌ 连接失败: ${error.message}</span>`;
+            }
+        });
+        
+        // 保存配置按钮
+        document.getElementById('save-config').addEventListener('click', saveConfig);
+        
+        // 页面加载完成后初始化
+        window.addEventListener('DOMContentLoaded', () => {
+            loadConfig();
+            log('页面加载完成，所有按钮事件已绑定');
+            log('当前时间: ' + new Date().toLocaleString());
+            log('当前API地址: ' + getApiBaseUrl());
+            
+            // 如果API地址仍是默认值，显示警告
+            const apiUrl = getApiBaseUrl();
+            if (apiUrl.includes('your-api-domain.com')) {
+                const warning = document.createElement('div');
+                warning.style.background = '#fff3cd';
+                warning.style.color = '#856404';
+                warning.style.padding = '10px';
+                warning.style.borderRadius = '5px';
+                warning.style.margin = '10px 0';
+                warning.innerHTML = '<strong>⚠️ 配置警告:</strong> API端点仍为默认值。请在上方输入框中输入您的实际后端服务器地址。';
+                document.querySelector('.config-area').appendChild(warning);
+            }
+        });
+    </script>
+</body>
+</html>
