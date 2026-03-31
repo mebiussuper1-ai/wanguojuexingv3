@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>游戏背景资料库 - 万国觉醒AI短剧脚本工作流</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #2c1810 0%, #1a1a1a 100%);
+            color: #f5e8d0;
+            min-height: 100vh;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 30px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            border: 2px solid #d4af37;
+        }
+        
+        .header h1 {
+            color: #d4af37;
+            font-size: 2.8rem;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            color: #f5e8d0;
+            opacity: 0.9;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .back-btn {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background: #8b0000;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+        
+        .back-btn:hover {
+            background: #a30000;
+        }
+        
+        .content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+        
+        @media (max-width: 900px) {
+            .content {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .upload-section, .files-section {
+            background: rgba(245, 232, 208, 0.1);
+            border-radius: 10px;
+            padding: 25px;
+            border: 1px solid rgba(212, 175, 55, 0.3);
+        }
+        
+        .section-title {
+            color: #d4af37;
+            font-size: 1.6rem;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid rgba(212, 175, 55, 0.5);
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #f5e8d0;
+        }
+        
+        input, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #555;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #f5e8d0;
+            font-size: 1rem;
+            font-family: inherit;
+        }
+        
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #d4af37;
+        }
+        
+        textarea {
+            min-height: 200px;
+            resize: vertical;
+        }
+        
+        .btn {
+            padding: 12px 25px;
+            background: linear-gradient(135deg, #8b0000, #a30000);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn:hover {
+            background: linear-gradient(135deg, #a30000, #8b0000);
+            transform: translateY(-2px);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, #555, #777);
+        }
+        
+        .btn-secondary:hover {
+            background: linear-gradient(135deg, #777, #555);
+        }
+        
+        .files-list {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        
+        .file-item {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border: 1px solid rgba(212, 175, 55, 0.2);
+        }
+        
+        .file-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .file-title {
+            font-weight: 600;
+            color: #d4af37;
+            font-size: 1.1rem;
+        }
+        
+        .file-meta {
+            font-size: 0.9rem;
+            color: #aaa;
+            margin-bottom: 10px;
+        }
+        
+        .file-content {
+            color: #ccc;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            margin-bottom: 15px;
+            max-height: 100px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .file-content::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 20px;
+            background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
+        }
+        
+        .file-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .status {
+            padding: 10px 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .status.success {
+            background: rgba(46, 204, 113, 0.2);
+            border: 1px solid #2ecc71;
+            color: #2ecc71;
+            display: block;
+        }
+        
+        .status.error {
+            background: rgba(231, 76, 60, 0.2);
+            border: 1px solid #e74c3c;
+            color: #e74c3c;
+            display: block;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #888;
+        }
+        
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-book"></i> 游戏背景资料库</h1>
+            <p>上传和管理万国觉醒游戏背景资料，AI生成创意时将自动参考这些资料</p>
+            <a href="rok-ai-script-workflow.html" class="back-btn">
+                <i class="fas fa-arrow-left"></i> 返回工作流
+            </a>
+        </div>
+        
+        <div class="status" id="status"></div>
+        
+        <div class="content">
+            <div class="upload-section">
+                <h2 class="section-title"><i class="fas fa-upload"></i> 上传新资料</h2>
+                <div class="form-group">
+                    <label for="filename">资料标题</label>
+                    <input type="text" id="filename" placeholder="例如：万国觉醒游戏背景介绍">
+                </div>
+                <div class="form-group">
+                    <label for="content">资料内容</label>
+                    <textarea id="content" placeholder="在此输入游戏背景资料、统帅信息、游戏机制等内容..."></textarea>
+                </div>
+                <button class="btn" id="upload-btn">
+                    <i class="fas fa-save"></i> 保存到资料库
+                </button>
+            </div>
+            
+            <div class="files-section">
+                <h2 class="section-title"><i class="fas fa-folder-open"></i> 资料文件</h2>
+                <div class="files-list" id="files-list">
+                    <div class="empty-state" id="empty-state">
+                        <i class="fas fa-book-open"></i>
+                        <p>资料库为空，请上传资料文件</p>
+                    </div>
+                </div>
+                <button class="btn btn-secondary" id="refresh-btn">
+                    <i class="fas fa-sync"></i> 刷新列表
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const API_BASE = 'http://localhost:3002/api';
+        const statusEl = document.getElementById('status');
+        const filesListEl = document.getElementById('files-list');
+        const emptyStateEl = document.getElementById('empty-state');
+        
+        // 显示状态消息
+        function showStatus(message, type = 'success') {
+            statusEl.textContent = message;
+            statusEl.className = `status ${type}`;
+            setTimeout(() => {
+                statusEl.style.display = 'none';
+            }, 5000);
+        }
+        
+        // 加载知识文件
+        async function loadKnowledgeFiles() {
+            try {
+                const response = await fetch(`${API_BASE}/knowledge`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    renderFiles(data.files);
+                } else {
+                    showStatus('加载失败: ' + (data.error || '未知错误'), 'error');
+                }
+            } catch (error) {
+                showStatus('加载失败: ' + error.message, 'error');
+            }
+        }
+        
+        // 渲染文件列表
+        function renderFiles(files) {
+            if (!files || files.length === 0) {
+                emptyStateEl.style.display = 'block';
+                filesListEl.innerHTML = '<div class="empty-state" id="empty-state"><i class="fas fa-book-open"></i><p>资料库为空，请上传资料文件</p></div>';
+                return;
+            }
+            
+            emptyStateEl.style.display = 'none';
+            
+            filesListEl.innerHTML = files.map(file => `
+                <div class="file-item">
+                    <div class="file-header">
+                        <div class="file-title">${file.title}</div>
+                        <div class="file-actions">
+                            <button class="btn btn-secondary" onclick="deleteFile('${file.filename}')" style="padding: 5px 10px; font-size: 0.9rem;">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="file-meta">
+                        大小: ${(file.size / 1024).toFixed(1)}KB | 
+                        创建: ${new Date(file.created).toLocaleDateString('zh-CN')}
+                    </div>
+                    <div class="file-content">${file.content}</div>
+                </div>
+            `).join('');
+        }
+        
+        // 删除文件
+        async function deleteFile(filename) {
+            if (!confirm(`确定要删除 "${filename}" 吗？`)) return;
+            
+            try {
+                const response = await fetch(`${API_BASE}/knowledge/${encodeURIComponent(filename)}`, {
+                    method: 'DELETE'
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    showStatus('文件删除成功');
+                    loadKnowledgeFiles();
+                } else {
+                    showStatus('删除失败: ' + (data.error || '未知错误'), 'error');
+                }
+            } catch (error) {
+                showStatus('删除失败: ' + error.message, 'error');
+            }
+        }
+        
+        // 上传文件
+        async function uploadFile() {
+            const filename = document.getElementById('filename').value.trim();
+            const content = document.getElementById('content').value.trim();
+            
+            if (!filename) {
+                showStatus('请输入资料标题', 'error');
+                return;
+            }
+            
+            if (!content) {
+                showStatus('请输入资料内容', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/knowledge`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ filename, content })
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    showStatus('资料上传成功！');
+                    document.getElementById('filename').value = '';
+                    document.getElementById('content').value = '';
+                    loadKnowledgeFiles();
+                } else {
+                    showStatus('上传失败: ' + (data.error || '未知错误'), 'error');
+                }
+            } catch (error) {
+                showStatus('上传失败: ' + error.message, 'error');
+            }
+        }
+        
+        // 事件监听
+        document.getElementById('upload-btn').addEventListener('click', uploadFile);
+        document.getElementById('refresh-btn').addEventListener('click', loadKnowledgeFiles);
+        
+        // 页面加载时加载文件
+        document.addEventListener('DOMContentLoaded', loadKnowledgeFiles);
+    </script>
+</body>
+</html>

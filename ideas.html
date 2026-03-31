@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>创意库管理 - 万国觉醒AI短剧脚本工作流</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2c1810 100%);
+            color: #f5e8d0;
+            min-height: 100vh;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 30px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            border: 2px solid #d4af37;
+        }
+        
+        .header h1 {
+            color: #d4af37;
+            font-size: 2.8rem;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            color: #f5e8d0;
+            opacity: 0.9;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .back-btn {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background: #8b0000;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+        
+        .back-btn:hover {
+            background: #a30000;
+        }
+        
+        .content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+        
+        @media (max-width: 900px) {
+            .content {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .upload-section, .ideas-section {
+            background: rgba(245, 232, 208, 0.1);
+            border-radius: 10px;
+            padding: 25px;
+            border: 1px solid rgba(212, 175, 55, 0.3);
+        }
+        
+        .section-title {
+            color: #d4af37;
+            font-size: 1.6rem;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid rgba(212, 175, 55, 0.5);
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #f5e8d0;
+            font-size: 0.95rem;
+        }
+        
+        input, textarea, select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #555;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #f5e8d0;
+            font-size: 1rem;
+            font-family: inherit;
+        }
+        
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #d4af37;
+        }
+        
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #8b0000, #a30000);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn:hover {
+            background: linear-gradient(135deg, #a30000, #8b0000);
+            transform: translateY(-2px);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, #555, #777);
+        }
+        
+        .btn-secondary:hover {
+            background: linear-gradient(135deg, #777, #555);
+        }
+        
+        .btn-small {
+            padding: 5px 10px;
+            font-size: 0.9rem;
+        }
+        
+        .ideas-list {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        
+        .idea-item {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border: 1px solid rgba(212, 175, 55, 0.2);
+            transition: transform 0.3s, border-color 0.3s;
+        }
+        
+        .idea-item:hover {
+            transform: translateY(-2px);
+            border-color: rgba(212, 175, 55, 0.5);
+        }
+        
+        .idea-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+        
+        .idea-title {
+            font-weight: 600;
+            color: #d4af37;
+            font-size: 1.2rem;
+            margin-bottom: 5px;
+        }
+        
+        .idea-description {
+            color: #ccc;
+            font-size: 0.95rem;
+            margin-bottom: 15px;
+            line-height: 1.5;
+        }
+        
+        .idea-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .meta-tag {
+            background: rgba(139, 0, 0, 0.3);
+            color: #ff9999;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }
+        
+        .meta-tag.platform {
+            background: rgba(212, 175, 55, 0.3);
+            color: #ffdd99;
+        }
+        
+        .idea-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+        
+        .status {
+            padding: 10px 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .status.success {
+            background: rgba(46, 204, 113, 0.2);
+            border: 1px solid #2ecc71;
+            color: #2ecc71;
+            display: block;
+        }
+        
+        .status.error {
+            background: rgba(231, 76, 60, 0.2);
+            border: 1px solid #e74c3c;
+            color: #e74c3c;
+            display: block;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #888;
+        }
+        
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        
+        @media (max-width: 600px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-lightbulb"></i> 创意库管理</h1>
+            <p>保存和管理你的创意方向，上传自定义创意，AI生成时可以参考这些创意</p>
+            <a href="rok-ai-script-workflow.html" class="back-btn">
+                <i class="fas fa-arrow-left"></i> 返回工作流
+            </a>
+        </div>
+        
+        <div class="status" id="status"></div>
+        
+        <div class="content">
+            <div class="upload-section">
+                <h2 class="section-title"><i class="fas fa-plus-circle"></i> 上传新创意</h2>
+                <div class="form-group">
+                    <label for="idea-title">创意标题 *</label>
+                    <input type="text" id="idea-title" placeholder="例如：凯撒与曹操的时空对决">
+                </div>
+                <div class="form-group">
+                    <label for="idea-description">创意描述 *</label>
+                    <textarea id="idea-description" placeholder="简要描述创意核心情节..."></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="idea-platform">目标平台</label>
+                        <select id="idea-platform">
+                            <option value="抖音/快手">抖音/快手</option>
+                            <option value="B站">B站</option>
+                            <option value="微信视频号">微信视频号</option>
+                            <option value="TikTok">TikTok</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="idea-duration">建议时长</label>
+                        <input type="text" id="idea-duration" placeholder="60-90秒">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="idea-tags">标签（用逗号分隔）</label>
+                    <input type="text" id="idea-tags" placeholder="跨时空, 战略对决, 历史英雄">
+                </div>
+                <div class="form-group">
+                    <label for="idea-characters">主要角色（用逗号分隔）</label>
+                    <input type="text" id="idea-characters" placeholder="凯撒, 曹操, 双方谋士">
+                </div>
+                <div class="form-group">
+                    <label for="idea-content">详细内容（可选）</label>
+                    <textarea id="idea-content" placeholder="创意的详细描述、情节构思等..."></textarea>
+                </div>
+                <button class="btn" id="save-btn">
+                    <i class="fas fa-save"></i> 保存到创意库
+                </button>
+            </div>
+            
+            <div class="ideas-section">
+                <h2 class="section-title"><i class="fas fa-folder-open"></i> 已保存的创意</h2>
+                <div class="ideas-list" id="ideas-list">
+                    <div class="empty-state" id="empty-state">
+                        <i class="fas fa-lightbulb"></i>
+                        <p>创意库为空，请保存你的创意</p>
+                    </div>
+                </div>
+                <button class="btn btn-secondary" id="refresh-btn">
+                    <i class="fas fa-sync"></i> 刷新列表
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const API_BASE = 'http://localhost:3002/api';
+        const statusEl = document.getElementById('status');
+        const ideasListEl = document.getElementById('ideas-list');
+        const emptyStateEl = document.getElementById('empty-state');
+        
+        // 显示状态消息
+        function showStatus(message, type = 'success') {
+            statusEl.textContent = message;
+            statusEl.className = `status ${type}`;
+            setTimeout(() => {
+                statusEl.style.display = 'none';
+            }, 5000);
+        }
+        
+        // 加载创意
+        async function loadIdeas() {
+            try {
+                const response = await fetch(`${API_BASE}/ideas`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    renderIdeas(data.ideas);
+                } else {
+                    showStatus('加载失败: ' + (data.error || '未知错误'), 'error');
+                }
+            } catch (error) {
+                showStatus('加载失败: ' + error.message, 'error');
+            }
+        }
+        
+        // 渲染创意列表
+        function renderIdeas(ideas) {
+            if (!ideas || ideas.length === 0) {
+                emptyStateEl.style.display = 'block';
+                ideasListEl.innerHTML = '<div class="empty-state" id="empty-state"><i class="fas fa-lightbulb"></i><p>创意库为空，请保存你的创意</p></div>';
+                return;
+            }
+            
+            emptyStateEl.style.display = 'none';
+            
+            ideasListEl.innerHTML = ideas.map(idea => `
+                <div class="idea-item">
+                    <div class="idea-header">
+                        <div>
+                            <div class="idea-title">${idea.title}</div>
+                            <div class="idea-description">${idea.description || '无描述'}</div>
+                        </div>
+                        <div class="idea-actions">
+                            <button class="btn btn-secondary btn-small" onclick="deleteIdea('${idea.id}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="idea-meta">
+                        ${idea.tags && idea.tags.length > 0 ? 
+                            idea.tags.map(tag => `<span class="meta-tag">${tag}</span>`).join('') : 
+                            '<span class="meta-tag">无标签</span>'}
+                        <span class="meta-tag platform">${idea.platform || '未指定平台'}</span>
+                        <span class="meta-tag">${idea.duration || '未指定时长'}</span>
+                    </div>
+                    ${idea.characters && idea.characters.length > 0 ? 
+                        `<div class="idea-meta">
+                            <span style="color: #aaa; font-size: 0.9rem;">角色: ${idea.characters.join(', ')}</span>
+                        </div>` : ''}
+                    ${idea.content ? 
+                        `<div style="color: #999; font-size: 0.9rem; margin-top: 10px; max-height: 60px; overflow: hidden;">
+                            ${idea.content.substring(0, 100)}${idea.content.length > 100 ? '...' : ''}
+                        </div>` : ''}
+                    <div style="font-size: 0.8rem; color: #777; margin-top: 10px;">
+                        创建: ${new Date(idea.created).toLocaleDateString('zh-CN')}
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // 删除创意
+        async function deleteIdea(id) {
+            if (!confirm('确定要删除这个创意吗？')) return;
+            
+            try {
+                const response = await fetch(`${API_BASE}/ideas/${id}`, {
+                    method: 'DELETE'
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    showStatus('创意删除成功');
+                    loadIdeas();
+                } else {
+                    showStatus('删除失败: ' + (data.error || '未知错误'), 'error');
+                }
+            } catch (error) {
+                showStatus('删除失败: ' + error.message, 'error');
+            }
+        }
+        
+        // 保存创意
+        async function saveIdea() {
+            const title = document.getElementById('idea-title').value.trim();
+            const description = document.getElementById('idea-description').value.trim();
+            const tags = document.getElementById('idea-tags').value.split(',').map(t => t.trim()).filter(t => t);
+            const characters = document.getElementById('idea-characters').value.split(',').map(c => c.trim()).filter(c => c);
+            const platform = document.getElementById('idea-platform').value;
+            const duration = document.getElementById('idea-duration').value.trim();
+            const content = document.getElementById('idea-content').value.trim();
+            
+            if (!title) {
+                showStatus('请输入创意标题', 'error');
+                return;
+            }
+            
+            if (!description) {
+                showStatus('请输入创意描述', 'error');
+                return;
+            }
+            
+            const ideaData = {
+                title,
+                description,
+                tags,
+                characters,
+                platform,
+                duration,
+                content,
+                style: '自定义',
+                targetAudience: '游戏玩家'
+            };
+            
+            try {
+                const response = await fetch(`${API_BASE}/ideas`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(ideaData)
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    showStatus('创意保存成功！');
+                    // 清空表单
+                    document.getElementById('idea-title').value = '';
+                    document.getElementById('idea-description').value = '';
+                    document.getElementById('idea-tags').value = '';
+                    document.getElementById('idea-characters').value = '';
+                    document.getElementById('idea-content').value = '';
+                    loadIdeas();
+                } else {
+                    showStatus('保存失败: ' + (data.error || '未知错误'), 'error');
+                }
+            } catch (error) {
+                showStatus('保存失败: ' + error.message, 'error');
+            }
+        }
+        
+        // 事件监听
+        document.getElementById('save-btn').addEventListener('click', saveIdea);
+        document.getElementById('refresh-btn').addEventListener('click', loadIdeas);
+        
+        // 页面加载时加载创意
+        document.addEventListener('DOMContentLoaded', loadIdeas);
+    </script>
+</body>
+</html>

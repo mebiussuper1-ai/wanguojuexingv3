@@ -1,0 +1,30 @@
+{
+  "name": "rok-ai-script-server-enhanced",
+  "version": "2.0.0",
+  "description": "万国觉醒AI短剧脚本生成服务器（增强版）- 支持实时搜索和DeepSeek AI",
+  "main": "rok-ai-server-enhanced.js",
+  "scripts": {
+    "start": "node rok-ai-server-enhanced.js",
+    "dev": "nodemon rok-ai-server-enhanced.js",
+    "test": "node -e \"console.log('服务器测试');\""
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "axios": "^1.6.0",
+    "cheerio": "^1.0.0-rc.12"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "keywords": [
+    "万国觉醒",
+    "AI",
+    "短剧",
+    "脚本",
+    "DeepSeek",
+    "实时搜索"
+  ],
+  "author": "万国觉醒AI工作流增强版",
+  "license": "MIT"
+}

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>万国觉醒AI短剧脚本工作流 - 网络部署版</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+            line-height: 1.6;
+        }
+        .header {
+            background: linear-gradient(135deg, #2c1810, #8b0000);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 2.5rem;
+        }
+        .header p {
+            opacity: 0.9;
+            margin-top: 10px;
+        }
+        .app-card {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            border-left: 5px solid #d4af37;
+        }
+        .app-card h2 {
+            color: #2c1810;
+            margin-top: 0;
+        }
+        .btn {
+            display: inline-block;
+            background: #8b0000;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            margin-top: 10px;
+            transition: background 0.3s;
+        }
+        .btn:hover {
+            background: #a30000;
+        }
+        .server-info {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+            font-family: monospace;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            color: #666;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>万国觉醒AI短剧脚本工作流</h1>
+        <p>网络部署版 | 实时搜索 + DeepSeek AI + 完全修复功能</p>
+    </div>
+
+    <div class="server-info">
+        <strong>服务器配置：</strong><br>
+        端口：3002<br>
+        API地址：http://localhost:3002/api<br>
+        DeepSeek API：已配置
+    </div>
+
+    <div class="app-card">
+        <h2>📝 主工作流界面</h2>
+        <p>完整的三步工作流程：输入要求 → 实时搜索 → AI生成创意 → AI生成脚本</p>
+        <a href="rok-ai-script-workflow.html" class="btn">进入工作流</a>
+    </div>
+
+    <div class="app-card">
+        <h2>🧪 功能测试页面</h2>
+        <p>测试所有按钮功能、API连接状态、事件绑定</p>
+        <a href="test-buttons.html" class="btn">进入测试页</a>
+    </div>
+
+    <div class="app-card">
+        <h2>📚 文档与指南</h2>
+        <p>部署指南、使用说明、故障排除</p>
+        <a href="FINAL-README.md" class="btn">查看完整文档</a>
+        <a href="NETWORK-DEPLOYMENT.md" class="btn">网络部署指南</a>
+    </div>
+
+    <div class="server-info">
+        <strong>启动服务器：</strong><br>
+        1. 双击 <code>start.bat</code>（Windows）<br>
+        2. 选择选项1（一键启动）<br>
+        3. 访问 <a href="http://localhost:3002">http://localhost:3002</a>
+    </div>
+
+    <div class="footer">
+        <p>万国觉醒AI短剧脚本工作流 v2.0 | 网络部署版 | © 2026</p>
+        <p>API密钥：sk-7fdb436ed0264313bf9d3dfe76a01169</p>
+    </div>
+
+    <script>
+        // 简单服务器状态检查
+        fetch('http://localhost:3002/api/health')
+            .then(res => res.ok ? console.log('服务器运行正常') : console.log('服务器异常'))
+            .catch(() => console.log('服务器未启动'));
+    </script>
+</body>
+</html>
