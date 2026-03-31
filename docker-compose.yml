@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  rok-ai-server:
+    build: .
+    container_name: rok-ai-server
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      - NODE_ENV=production
+      - LOG_LEVEL=info
+      # 在这里设置您的DeepSeek API密钥
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-sk-7fdb436ed0264313bf9d3dfe76a01169}
+      # CORS配置（允许的前端域名，逗号分隔）
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3000,https://localhost:3000}
+    volumes:
+      # 挂载日志目录（可选）
+      - ./logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - rok-network
+    # 资源限制（可选）
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+networks:
+  rok-network:
+    driver: bridge
+
+# 使用说明：
+# 1. 创建.env文件（可选）：
+#    DEEPSEEK_API_KEY=your-actual-api-key
+#    ALLOWED_ORIGINS=https://your-frontend-domain.com
+#
+# 2. 构建并启动：
+#    docker-compose up -d
+#
+# 3. 查看日志：
+#    docker-compose logs -f
+#
+# 4. 停止服务：
+#    docker-compose down
+#
+# 5. 重新构建：
+#    docker-compose up -d --build

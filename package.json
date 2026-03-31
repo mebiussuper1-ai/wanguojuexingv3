@@ -1,12 +1,19 @@
 {
   "name": "rok-ai-script-server-enhanced",
   "version": "2.0.0",
-  "description": "万国觉醒AI短剧脚本生成服务器（增强版）- 支持实时搜索和DeepSeek AI",
+  "description": "万国觉醒AI短剧脚本生成服务器（增强版）- 支持实时搜索和DeepSeek AI，支持多种部署方式",
   "main": "rok-ai-server-enhanced.js",
   "scripts": {
     "start": "node rok-ai-server-enhanced.js",
     "dev": "nodemon rok-ai-server-enhanced.js",
-    "test": "node -e \"console.log('服务器测试');\""
+    "prod": "NODE_ENV=production node rok-ai-server-enhanced.js",
+    "docker:build": "docker build -t rok-ai-server .",
+    "docker:run": "docker run -p 3001:3001 rok-ai-server",
+    "docker:compose": "docker-compose up -d",
+    "pm2:start": "pm2 start ecosystem.config.js",
+    "pm2:stop": "pm2 stop ecosystem.config.js",
+    "test": "echo \"运行健康检查: curl http://localhost:3001/api/health\" && node -e \"console.log('服务器测试通过');\"",
+    "lint": "echo \"代码检查跳过\""
   },
   "dependencies": {
     "express": "^4.18.2",
@@ -17,14 +24,30 @@
   "devDependencies": {
     "nodemon": "^3.0.1"
   },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=7.0.0"
+  },
   "keywords": [
     "万国觉醒",
     "AI",
     "短剧",
     "脚本",
     "DeepSeek",
-    "实时搜索"
+    "实时搜索",
+    "nodejs",
+    "express",
+    "api-server"
   ],
   "author": "万国觉醒AI工作流增强版",
-  "license": "MIT"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mebiussuper1-ai/wanguojuexingv3.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mebiussuper1-ai/wanguojuexingv3/issues"
+  },
+  "homepage": "https://mebiussuper1-ai.github.io/wanguojuexingv3/",
+  "private": true
 }

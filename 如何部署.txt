@@ -1,0 +1,110 @@
+# 万国觉醒AI短剧脚本服务器 - 部署说明
+
+## 🎯 一句话概括
+将本目录（"后端服务器"）的所有文件上传到GitHub，即可在各种平台一键部署完整的后端API服务器。
+
+## 📦 包含文件
+本目录包含16个文件，分为6类：
+
+1. **主程序** - `rok-ai-server-enhanced.js`
+2. **配置** - `package.json`, `.env.example`, `.gitignore`
+3. **容器化** - `Dockerfile`, `docker-compose.yml`
+4. **云平台** - `railway.json`, `render.yaml`, `heroku.yml`, `Procfile`
+5. **进程管理** - `ecosystem.config.js`
+6. **启动脚本** - `start.sh` (Linux/macOS), `start-enhanced-server.bat` (Windows)
+7. **文档** - `README.md`, `QUICK-START.md`, `DEPLOYMENT-CHECKLIST.md`, `FILES-OVERVIEW.md`
+
+## 🚀 快速部署（三选一）
+
+### 方法1：Railway.app（最简单，免费）
+1. 访问 https://railway.app
+2. 注册账号
+3. 点击 "New Project" → "Deploy from GitHub"
+4. 选择你的仓库
+5. 设置环境变量：
+   - `DEEPSEEK_API_KEY` = 你的DeepSeek密钥
+   - `ALLOWED_ORIGINS` = https://mebiussuper1-ai.github.io
+6. 等待部署完成，获取服务器地址
+
+### 方法2：Render.com（免费）
+1. 访问 https://render.com
+2. 注册账号
+3. 点击 "New" → "Web Service"
+4. 连接GitHub仓库
+5. 使用默认配置，设置环境变量
+6. 创建服务，等待部署
+
+### 方法3：本地运行（测试用）
+```bash
+# 进入本目录
+cd 后端服务器
+
+# 安装依赖
+npm install
+
+# 启动（Windows双击start-enhanced-server.bat）
+# 或Linux/macOS：
+chmod +x start.sh
+./start.sh
+```
+
+## 🔑 必须配置
+1. **获取DeepSeek API密钥**：
+   - 访问 https://platform.deepseek.com/api_keys
+   - 注册/登录，创建API密钥
+   - 复制密钥（以`sk-`开头）
+
+2. **配置环境变量**：
+   - 复制 `.env.example` 为 `.env`
+   - 修改 `DEEPSEEK_API_KEY` 为你的密钥
+   - 设置 `ALLOWED_ORIGINS` 为你的前端域名
+
+## 🌐 连接前端
+1. 获取后端地址：
+   - Railway: `https://xxx.up.railway.app`
+   - Render: `https://xxx.onrender.com`
+   - 本地: `http://localhost:3001`
+
+2. 修改前端 `config.js`：
+   ```javascript
+   const CONFIG = {
+       API_BASE_URL: 'https://xxx.up.railway.app/api',
+       // 其他配置...
+   };
+   ```
+
+## ✅ 验证部署
+1. 访问健康检查：
+   ```
+   https://xxx.up.railway.app/api/health
+   ```
+   应返回：`{"status":"ok","deepseek_configured":true}`
+
+2. 在前端点击"测试API连接"按钮
+3. 显示"✅ 连接成功"即为成功
+
+## 🆘 遇到问题？
+1. **查看文档**：
+   - `README.md` - 完整文档
+   - `QUICK-START.md` - 快速指南
+   - `DEPLOYMENT-CHECKLIST.md` - 检查清单
+
+2. **检查日志**：
+   - 云平台的控制台日志
+   - 服务器启动时的输出
+
+3. **测试API**：
+   ```bash
+   curl https://xxx.up.railway.app/api/health
+   ```
+
+## 💡 提示
+- 所有文件已优化，开箱即用
+- 支持多种部署方式，选择最适合你的
+- API失败时自动使用智能备用数据
+- 已配置CORS，允许GitHub Pages访问
+
+---
+**一句话总结：上传 → 配置API密钥 → 部署 → 连接前端 → 完成！**
+
+最后更新：2026-03-31 | 版本：2.0.0

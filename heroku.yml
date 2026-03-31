@@ -1,0 +1,9 @@
+# Heroku部署配置
+# 文档：https://devcenter.heroku.com/articles/heroku-yml-build-manifest
+
+build:
+  languages:
+    - nodejs
+
+run:
+  web: node rok-ai-server-enhanced.js

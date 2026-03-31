@@ -1,0 +1,27 @@
+# Render.com 部署配置
+# 文档：https://render.com/docs/yaml-spec
+
+services:
+  - type: web
+    name: rok-ai-server
+    env: node
+    region: frankfurt  # 可选：ohio, oregon, frankfurt, singapore, sydney
+    plan: free         # 可选：starter, standard, pro
+    buildCommand: npm install
+    startCommand: node rok-ai-server-enhanced.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: PORT
+        value: 3001
+      - key: NODE_ENV
+        value: production
+      - key: DEEPSEEK_API_KEY
+        sync: false  # 需要在Render控制台中设置
+      - key: ALLOWED_ORIGINS
+        value: "*"   # 允许所有域名，生产环境应限制
+    disk:
+      name: logs
+      mountPath: /app/logs
+      sizeGB: 1
+    autoDeploy: true
+    branch: main

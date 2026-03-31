@@ -1,245 +1,92 @@
+// 万国觉醒AI短剧脚本服务器 - 生产优化版
+// 支持环境变量配置和多种部署方式
+
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
-const cheerio = require('cheerio'); // 添加cheerio用于HTML解析
-const fs = require('fs').promises;
-const path = require('path');
-const app = express();
-const PORT = 3002;
+const cheerio = require('cheerio');
 
-// 中间件
-app.use(cors());
-app.use(express.json());
-app.use(express.static('.')); // 提供静态文件
+// ==================== 配置 ====================
+const PORT = process.env.PORT || 3001;
+const NODE_ENV = process.env.NODE_ENV || 'development';
+const LOG_LEVEL = process.env.LOG_LEVEL || 'info';
 
-// 数据存储目录配置
-const DATA_DIR = path.join(__dirname, 'data');
-const KNOWLEDGE_DIR = path.join(DATA_DIR, 'knowledge');
-const IDEAS_DIR = path.join(DATA_DIR, 'ideas');
-
-// 初始化数据目录
-async function initDataDirectories() {
-    try {
-        await fs.mkdir(DATA_DIR, { recursive: true });
-        await fs.mkdir(KNOWLEDGE_DIR, { recursive: true });
-        await fs.mkdir(IDEAS_DIR, { recursive: true });
-        console.log('数据目录初始化完成:', DATA_DIR);
-    } catch (error) {
-        console.error('初始化数据目录失败:', error);
-    }
-}
-
-// 启动时初始化目录
-initDataDirectories();
-
-// ============================================================================
-// 资料库管理函数
-// ============================================================================
-
-// 获取所有知识文件
-async function getAllKnowledgeFiles() {
-    try {
-        const files = await fs.readdir(KNOWLEDGE_DIR);
-        const knowledgeFiles = [];
-        
-        for (const file of files) {
-            const filePath = path.join(KNOWLEDGE_DIR, file);
-            const stats = await fs.stat(filePath);
-            
-            if (stats.isFile()) {
-                const content = await fs.readFile(filePath, 'utf-8');
-                knowledgeFiles.push({
-                    id: path.basename(file, path.extname(file)),
-                    filename: file,
-                    title: path.basename(file, path.extname(file)).replace(/_/g, ' '),
-                    content: content.substring(0, 500) + (content.length > 500 ? '...' : ''),
-                    fullContent: content,
-                    size: stats.size,
-                    created: stats.birthtime,
-                    modified: stats.mtime
-                });
-            }
-        }
-        
-        return knowledgeFiles;
-    } catch (error) {
-        console.error('获取知识文件失败:', error);
-        return [];
-    }
-}
-
-// 保存知识文件
-async function saveKnowledgeFile(filename, content) {
-    try {
-        // 清理文件名，只保留字母、数字、中文、下划线和空格
-        const safeFilename = filename.replace(/[^\w\u4e00-\u9fa5\s.-]/g, '_') + '.txt';
-        const filePath = path.join(KNOWLEDGE_DIR, safeFilename);
-        
-        await fs.writeFile(filePath, content, 'utf-8');
-        return { success: true, filename: safeFilename, path: filePath };
-    } catch (error) {
-        console.error('保存知识文件失败:', error);
-        return { success: false, error: error.message };
-    }
-}
-
-// 删除知识文件
-async function deleteKnowledgeFile(filename) {
-    try {
-        const filePath = path.join(KNOWLEDGE_DIR, filename);
-        await fs.unlink(filePath);
-        return { success: true };
-    } catch (error) {
-        console.error('删除知识文件失败:', error);
-        return { success: false, error: error.message };
-    }
-}
-
-// ============================================================================
-// 创意管理函数
-// ============================================================================
-
-const IDEAS_FILE = path.join(IDEAS_DIR, 'saved_ideas.json');
-
-// 获取所有保存的创意
-async function getAllSavedIdeas() {
-    try {
-        if (!fs.existsSync(IDEAS_FILE)) {
-            await fs.writeFile(IDEAS_FILE, JSON.stringify([], null, 2), 'utf-8');
-            return [];
-        }
-        
-        const content = await fs.readFile(IDEAS_FILE, 'utf-8');
-        return JSON.parse(content);
-    } catch (error) {
-        console.error('获取保存的创意失败:', error);
-        return [];
-    }
-}
-
-// 保存创意
-async function saveIdea(idea) {
-    try {
-        const ideas = await getAllSavedIdeas();
-        const newIdea = {
-            id: Date.now().toString(),
-            title: idea.title || '未命名创意',
-            description: idea.description || '',
-            tags: idea.tags || [],
-            characters: idea.characters || [],
-            platform: idea.platform || '抖音/快手',
-            style: idea.style || '史诗战争',
-            targetAudience: idea.targetAudience || '年轻玩家',
-            duration: idea.duration || '60-90秒',
-            content: idea.content || '',
-            created: new Date().toISOString(),
-            modified: new Date().toISOString()
-        };
-        
-        ideas.push(newIdea);
-        await fs.writeFile(IDEAS_FILE, JSON.stringify(ideas, null, 2), 'utf-8');
-        return { success: true, idea: newIdea };
-    } catch (error) {
-        console.error('保存创意失败:', error);
-        return { success: false, error: error.message };
-    }
-}
-
-// 更新创意
-async function updateIdea(id, updates) {
-    try {
-        const ideas = await getAllSavedIdeas();
-        const index = ideas.findIndex(idea => idea.id === id);
-        
-        if (index === -1) {
-            return { success: false, error: '创意不存在' };
-        }
-        
-        ideas[index] = {
-            ...ideas[index],
-            ...updates,
-            modified: new Date().toISOString()
-        };
-        
-        await fs.writeFile(IDEAS_FILE, JSON.stringify(ideas, null, 2), 'utf-8');
-        return { success: true, idea: ideas[index] };
-    } catch (error) {
-        console.error('更新创意失败:', error);
-        return { success: false, error: error.message };
-    }
-}
-
-// 删除创意
-async function deleteIdea(id) {
-    try {
-        const ideas = await getAllSavedIdeas();
-        const filteredIdeas = ideas.filter(idea => idea.id !== id);
-        
-        if (filteredIdeas.length === ideas.length) {
-            return { success: false, error: '创意不存在' };
-        }
-        
-        await fs.writeFile(IDEAS_FILE, JSON.stringify(filteredIdeas, null, 2), 'utf-8');
-        return { success: true };
-    } catch (error) {
-        console.error('删除创意失败:', error);
-        return { success: false, error: error.message };
-    }
-}
-
-// 从知识库获取内容用于创意生成
-async function getKnowledgeForIdeas(requirement) {
-    try {
-        const knowledgeFiles = await getAllKnowledgeFiles();
-        if (knowledgeFiles.length === 0) {
-            return '（资料库为空，请上传万国觉醒相关资料）';
-        }
-        
-        // 简单关键词匹配：查找包含需求关键词的知识
-        const keywords = requirement.toLowerCase().split(/[\s,，。]+/).filter(k => k.length > 1);
-        let relevantContent = '';
-        
-        for (const file of knowledgeFiles) {
-            const contentLower = file.fullContent.toLowerCase();
-            const hasKeyword = keywords.some(keyword => contentLower.includes(keyword));
-            
-            if (hasKeyword) {
-                relevantContent += `【${file.title}】\n${file.fullContent.substring(0, 1000)}\n\n`;
-            }
-        }
-        
-        if (relevantContent) {
-            return `以下是从资料库中找到的相关信息：\n\n${relevantContent}`;
-        }
-        
-        // 如果没有匹配的，返回所有知识的摘要
-        const allContent = knowledgeFiles.map(file => 
-            `【${file.title}】\n${file.fullContent.substring(0, 500)}...`
-        ).join('\n\n');
-        
-        return `资料库内容摘要：\n\n${allContent}`;
-    } catch (error) {
-        console.error('获取知识库内容失败:', error);
-        return '（获取资料库内容失败）';
-    }
-}
-
-// DeepSeek API 配置 - 使用用户提供的API密钥
+// DeepSeek API 配置 - 从环境变量读取，支持Railway、Render等平台
 const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
-const DEEPSEEK_API_KEY = 'sk-7fdb436ed0264313bf9d3dfe76a01169'; // 用户提供的API密钥
+const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || 'sk-7fdb436ed0264313bf9d3dfe76a01169';
+
+// CORS配置 - 从环境变量读取允许的域名
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS 
+    ? process.env.ALLOWED_ORIGINS.split(',') 
+    : ['http://localhost:3000', 'http://localhost:3001', 'https://mebiussuper1-ai.github.io'];
+
+const app = express();
+
+// ==================== 中间件 ====================
+// CORS配置
+app.use(cors({
+    origin: function(origin, callback) {
+        // 允许没有origin的请求（如curl、postman）
+        if (!origin) return callback(null, true);
+        
+        if (ALLOWED_ORIGINS.includes(origin) || ALLOWED_ORIGINS.includes('*')) {
+            callback(null, true);
+        } else {
+            console.warn(`CORS阻止了来自 ${origin} 的请求`);
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// 请求体大小限制（防止DoS攻击）
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// 请求日志中间件
+app.use((req, res, next) => {
+    const start = Date.now();
+    res.on('finish', () => {
+        const duration = Date.now() - start;
+        const logLevel = res.statusCode >= 400 ? 'warn' : 'info';
+        console[logLevel](`${req.method} ${req.originalUrl} ${res.statusCode} - ${duration}ms`);
+    });
+    next();
+});
+
+// 静态文件服务（可选）
+if (NODE_ENV === 'development') {
+    app.use(express.static('.'));
+    console.log('开发模式：已启用静态文件服务');
+}
+
+// ==================== 辅助函数 ====================
+
+// 日志函数
+function log(level, message, data = {}) {
+    const timestamp = new Date().toISOString();
+    const logMessage = `[${timestamp}] [${level.toUpperCase()}] ${message}`;
+    
+    if (level === 'error') {
+        console.error(logMessage, data);
+    } else if (level === 'warn') {
+        console.warn(logMessage, data);
+    } else if (LOG_LEVEL === 'debug' || level === 'info') {
+        console.log(logMessage, data);
+    }
+}
 
 // 真实搜索函数 - 联网搜索万国觉醒相关内容
 async function searchRokContent(query) {
     try {
-        console.log(`正在搜索万国觉醒相关内容: ${query}`);
+        log('info', `正在搜索万国觉醒相关内容: ${query}`);
         
         // 搜索策略：尝试多个来源获取游戏信息
         const searchPromises = [
-            // 1. 百度百科搜索
             searchBaiduBaike(query),
-            // 2. 游戏官网信息
             searchGameOfficialInfo(),
-            // 3. 游戏社区/论坛信息
             searchGameCommunityInfo(query)
         ];
         
@@ -260,10 +107,10 @@ async function searchRokContent(query) {
         
         // 去重并限制数量
         const uniqueResults = [...new Set(allResults)];
-        return uniqueResults.slice(0, 10); // 返回最多10条结果
+        return uniqueResults.slice(0, 10);
         
     } catch (error) {
-        console.error('搜索失败:', error.message);
+        log('error', '搜索失败', { message: error.message });
         return getBasicRokInfo();
     }
 }
@@ -294,7 +141,7 @@ async function searchBaiduBaike(query) {
         
         return [];
     } catch (error) {
-        console.error('百度百科搜索失败:', error.message);
+        log('warn', '百度百科搜索失败', { message: error.message });
         return [];
     }
 }
@@ -354,22 +201,10 @@ function getBasicRokInfo() {
 
 // 生成创意
 async function generateIdeas(requirement, searchResults) {
-    // 安全处理搜索结果
-    const safeSearchResults = Array.isArray(searchResults) ? searchResults : [];
-    const searchText = safeSearchResults.length > 0 ? 
-        safeSearchResults.join('\n') : 
-        '（实时搜索暂时不可用，使用默认游戏背景信息）\n《万国觉醒》是一款多文明即时策略手游，玩家可以扮演历史上的著名统帅，如凯撒、曹操、源义经等，建立自己的帝国，与其他玩家联盟或对抗。游戏特色包括多文明选择、实时战斗、联盟系统等。';
-    
-    // 从知识库获取相关内容
-    const knowledgeContent = await getKnowledgeForIdeas(requirement);
-    
-    const prompt = `你是一个专业的短视频内容策划专家。请基于以下《万国觉醒》游戏背景信息、资料库知识和用户要求，生成3个高质量的短剧创意。
+    const prompt = `你是一个专业的短视频内容策划专家。请基于以下《万国觉醒》游戏背景信息和用户要求，生成3个高质量的短剧创意。
 
 游戏背景信息（来自实时搜索）：
-${searchText}
-
-资料库知识（用户上传的游戏相关资料）：
-${knowledgeContent}
+${searchResults.join('\n')}
 
 用户要求：${requirement}
 
@@ -402,11 +237,12 @@ ${knowledgeContent}
 ]`;
 
     try {
-        if (!DEEPSEEK_API_KEY) {
-            throw new Error('DeepSeek API密钥未配置');
+        if (!DEEPSEEK_API_KEY || DEEPSEEK_API_KEY.includes('your-api-key')) {
+            log('warn', 'DeepSeek API密钥未配置或为默认值，使用备用数据');
+            return generateSmartFallbackIdeas(requirement, searchResults);
         }
 
-        console.log('调用DeepSeek API生成创意...');
+        log('info', '调用DeepSeek API生成创意');
         const response = await axios.post(DEEPSEEK_API_URL, {
             model: 'deepseek-chat',
             messages: [
@@ -421,16 +257,16 @@ ${knowledgeContent}
                 'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
                 'Content-Type': 'application/json'
             },
-            timeout: 15000
+            timeout: 30000
         });
 
-        console.log('DeepSeek API响应收到');
         const content = response.data.choices[0].message.content;
+        log('info', 'DeepSeek API响应收到');
         
         try {
             const parsedContent = JSON.parse(content);
-            // 检查是否是数组，或者包含数组
             let ideasArray = [];
+            
             if (Array.isArray(parsedContent)) {
                 ideasArray = parsedContent;
             } else if (parsedContent.ideas && Array.isArray(parsedContent.ideas)) {
@@ -438,7 +274,6 @@ ${knowledgeContent}
             } else if (parsedContent.creations && Array.isArray(parsedContent.creations)) {
                 ideasArray = parsedContent.creations;
             } else {
-                // 尝试提取任何数组
                 for (const key in parsedContent) {
                     if (Array.isArray(parsedContent[key])) {
                         ideasArray = parsedContent[key];
@@ -458,10 +293,9 @@ ${knowledgeContent}
                 duration: idea.duration || '60-90秒'
             }));
             
-            return ideasArray.slice(0, 3); // 确保只返回3个
+            return ideasArray.slice(0, 3);
         } catch (parseError) {
-            console.error('解析AI响应失败:', parseError.message);
-            // 尝试提取JSON部分
+            log('error', '解析AI响应失败', { message: parseError.message });
             const jsonMatch = content.match(/\[[\s\S]*\]/);
             if (jsonMatch) {
                 return JSON.parse(jsonMatch[0]);
@@ -469,27 +303,19 @@ ${knowledgeContent}
             throw new Error('无法解析AI响应');
         }
     } catch (error) {
-        console.error('DeepSeek API调用失败:', error.message);
-        // 返回智能模拟数据
+        log('error', 'DeepSeek API调用失败', { message: error.message });
         return generateSmartFallbackIdeas(requirement, searchResults);
     }
 }
 
 // 智能备用创意生成
 function generateSmartFallbackIdeas(requirement, searchResults) {
-    console.log('使用智能备用创意生成');
+    log('info', '使用智能备用创意生成');
     
-    // 分析搜索结果的特性
+    const lowerReq = requirement.toLowerCase();
     const hasCaesar = searchResults.some(r => r.includes('凯撒'));
     const hasCaoCao = searchResults.some(r => r.includes('曹操'));
-    const hasYoshitsune = searchResults.some(r => r.includes('源义经'));
-    const hasFrederick = searchResults.some(r => r.includes('腓特烈'));
-    
-    // 分析用户需求关键词
-    const lowerReq = requirement.toLowerCase();
     const hasBetrayal = lowerReq.includes('背叛') || lowerReq.includes('阴谋');
-    const hasHeroic = lowerReq.includes('英雄') || lowerReq.includes('惜英雄');
-    const hasStrategy = lowerReq.includes('战略') || lowerReq.includes('战术');
     const hasTimeTravel = lowerReq.includes('时空') || lowerReq.includes('穿越');
     
     const ideas = [
@@ -540,19 +366,14 @@ function generateSmartFallbackIdeas(requirement, searchResults) {
 
 // 生成脚本
 async function generateScripts(idea, requirement) {
-    // 安全获取属性，防止undefined错误
-    const safeJoin = (arr, separator = ', ') => {
-        return (Array.isArray(arr) && arr.length > 0) ? arr.join(separator) : '未指定';
-    };
-    
     const prompt = `你是一个专业的短视频脚本作家。请基于以下创意和用户要求，创作一个高质量、适合短视频平台的短剧脚本。
 
-创意标题：${idea.title || '未指定标题'}
-创意描述：${idea.description || '未指定描述'}
-标签：${safeJoin(idea.tags)}
-主要角色：${safeJoin(idea.characters)}
-目标平台：${idea.platform || '抖音/快手'}
-建议时长：${idea.duration || '60-90秒'}
+创意标题：${idea.title}
+创意描述：${idea.description}
+标签：${idea.tags.join(', ')}
+主要角色：${idea.characters.join(', ')}
+目标平台：${idea.platform}
+建议时长：${idea.duration}
 
 用户原始要求：${requirement}
 
@@ -580,11 +401,12 @@ async function generateScripts(idea, requirement) {
 【平台适配】`;
 
     try {
-        if (!DEEPSEEK_API_KEY) {
-            throw new Error('DeepSeek API密钥未配置');
+        if (!DEEPSEEK_API_KEY || DEEPSEEK_API_KEY.includes('your-api-key')) {
+            log('warn', 'DeepSeek API密钥未配置，使用备用脚本');
+            return generateSmartFallbackScript(idea, requirement);
         }
 
-        console.log(`调用DeepSeek API为"${idea.title}"生成脚本...`);
+        log('info', `调用DeepSeek API为"${idea.title}"生成脚本`);
         const response = await axios.post(DEEPSEEK_API_URL, {
             model: 'deepseek-chat',
             messages: [
@@ -598,22 +420,18 @@ async function generateScripts(idea, requirement) {
                 'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
                 'Content-Type': 'application/json'
             },
-            timeout: 15000
+            timeout: 30000
         });
 
-        console.log('脚本生成完成');
         return response.data.choices[0].message.content;
     } catch (error) {
-        console.error('DeepSeek API调用失败:', error.message);
-        // 返回智能模拟脚本
+        log('error', 'DeepSeek API调用失败', { message: error.message });
         return generateSmartFallbackScript(idea, requirement);
     }
 }
 
 // 智能备用脚本生成
 function generateSmartFallbackScript(idea, requirement) {
-    console.log(`为"${idea.title}"生成智能备用脚本`);
-    
     const platformTips = {
         '抖音/快手': '前3秒强视觉冲击，中间节奏快速切换，结尾悬念引发评论互动',
         'B站短视频': '突出细节和专业知识，可稍长，注重社区互动',
@@ -671,138 +489,7 @@ function generateSmartFallbackScript(idea, requirement) {
 • 适合${idea.platform}的算法推荐机制`;
 }
 
-// API路由
-
-// ============================================================================
-// 资料库管理API
-// ============================================================================
-
-// 获取所有知识文件
-app.get('/api/knowledge', async (req, res) => {
-    try {
-        const knowledgeFiles = await getAllKnowledgeFiles();
-        res.json({ success: true, files: knowledgeFiles });
-    } catch (error) {
-        console.error('获取知识文件失败:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// 上传知识文件
-app.post('/api/knowledge', async (req, res) => {
-    try {
-        const { filename, content } = req.body;
-        
-        if (!filename || !content) {
-            return res.status(400).json({ success: false, error: '文件名和内容不能为空' });
-        }
-        
-        const result = await saveKnowledgeFile(filename, content);
-        
-        if (result.success) {
-            res.json({ success: true, filename: result.filename });
-        } else {
-            res.status(500).json({ success: false, error: result.error });
-        }
-    } catch (error) {
-        console.error('上传知识文件失败:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// 删除知识文件
-app.delete('/api/knowledge/:filename', async (req, res) => {
-    try {
-        const { filename } = req.params;
-        const result = await deleteKnowledgeFile(filename);
-        
-        if (result.success) {
-            res.json({ success: true });
-        } else {
-            res.status(500).json({ success: false, error: result.error });
-        }
-    } catch (error) {
-        console.error('删除知识文件失败:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// ============================================================================
-// 创意管理API
-// ============================================================================
-
-// 获取所有保存的创意
-app.get('/api/ideas', async (req, res) => {
-    try {
-        const ideas = await getAllSavedIdeas();
-        res.json({ success: true, ideas });
-    } catch (error) {
-        console.error('获取保存的创意失败:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// 保存创意
-app.post('/api/ideas', async (req, res) => {
-    try {
-        const idea = req.body;
-        
-        if (!idea || !idea.title) {
-            return res.status(400).json({ success: false, error: '创意标题不能为空' });
-        }
-        
-        const result = await saveIdea(idea);
-        
-        if (result.success) {
-            res.json({ success: true, idea: result.idea });
-        } else {
-            res.status(500).json({ success: false, error: result.error });
-        }
-    } catch (error) {
-        console.error('保存创意失败:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// 更新创意
-app.put('/api/ideas/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const updates = req.body;
-        
-        const result = await updateIdea(id, updates);
-        
-        if (result.success) {
-            res.json({ success: true, idea: result.idea });
-        } else {
-            res.status(404).json({ success: false, error: result.error });
-        }
-    } catch (error) {
-        console.error('更新创意失败:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// 删除创意
-app.delete('/api/ideas/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const result = await deleteIdea(id);
-        
-        if (result.success) {
-            res.json({ success: true });
-        } else {
-            res.status(404).json({ success: false, error: result.error });
-        }
-    } catch (error) {
-        console.error('删除创意失败:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// ============================================================================
-// 核心功能API
-// ============================================================================
+// ==================== API路由 ====================
 
 // 搜索并生成创意
 app.post('/api/generate-ideas', async (req, res) => {
@@ -810,51 +497,40 @@ app.post('/api/generate-ideas', async (req, res) => {
         const { requirement } = req.body;
         
         if (!requirement) {
-            return res.status(400).json({ error: '请输入创意要求' });
+            return res.status(400).json({ 
+                success: false, 
+                error: '请输入创意要求',
+                message: 'requirement字段不能为空'
+            });
         }
         
-        console.log(`收到创意生成请求: ${requirement.substring(0, 50)}...`);
+        if (requirement.length > 1000) {
+            return res.status(400).json({
+                success: false,
+                error: '输入过长',
+                message: '创意要求不能超过1000个字符'
+            });
+        }
         
-        // 1. 实时搜索万国觉醒相关内容
+        log('info', `收到创意生成请求`, { length: requirement.length });
+        
         const searchResults = await searchRokContent(requirement);
-        console.log(`搜索完成，获得${searchResults.length}条结果`);
-        
-        // 2. 使用DeepSeek AI生成创意
         const ideas = await generateIdeas(requirement, searchResults);
-        console.log(`生成${ideas.length}个创意`);
         
-        res.json({ success: true, ideas, searchCount: searchResults.length });
+        res.json({ 
+            success: true, 
+            ideas, 
+            searchCount: searchResults.length,
+            timestamp: new Date().toISOString()
+        });
     } catch (error) {
-        console.error('生成创意失败:', error);
+        log('error', '生成创意失败', { message: error.message });
         res.status(500).json({ 
+            success: false,
             error: '生成创意失败', 
             message: error.message,
-            fallback: true
-        });
-    }
-});
-
-// 生成脚本
-app.post('/api/generate-scripts', async (req, res) => {
-    try {
-        const { idea, requirement } = req.body;
-        
-        if (!idea || !requirement) {
-            return res.status(400).json({ error: '缺少必要参数' });
-        }
-        
-        console.log(`收到脚本生成请求: ${idea.title}`);
-        
-        // 生成脚本
-        const script = await generateScripts(idea, requirement);
-        
-        res.json({ success: true, script });
-    } catch (error) {
-        console.error('生成脚本失败:', error);
-        res.status(500).json({ 
-            error: '生成脚本失败', 
-            message: error.message,
-            fallback: true
+            fallback: true,
+            timestamp: new Date().toISOString()
         });
     }
 });
@@ -865,14 +541,20 @@ app.post('/api/generate-batch-scripts', async (req, res) => {
         const { idea, requirement, count = 3 } = req.body;
         
         if (!idea || !requirement) {
-            return res.status(400).json({ error: '缺少必要参数' });
+            return res.status(400).json({ 
+                success: false, 
+                error: '缺少必要参数',
+                message: 'idea和requirement字段不能为空'
+            });
         }
         
-        console.log(`收到批量脚本生成请求: ${idea.title}，数量: ${count}`);
+        log('info', `收到批量脚本生成请求`, { 
+            title: idea.title, 
+            count: count 
+        });
         
         const scripts = [];
-        for (let i = 0; i < count; i++) {
-            console.log(`生成第${i + 1}个脚本...`);
+        for (let i = 0; i < Math.min(count, 5); i++) { // 最多5个
             const script = await generateScripts(idea, requirement);
             scripts.push({
                 id: i + 1,
@@ -881,14 +563,20 @@ app.post('/api/generate-batch-scripts', async (req, res) => {
             });
         }
         
-        console.log(`批量生成完成，共${scripts.length}个脚本`);
-        res.json({ success: true, scripts });
+        res.json({ 
+            success: true, 
+            scripts,
+            count: scripts.length,
+            timestamp: new Date().toISOString()
+        });
     } catch (error) {
-        console.error('批量生成脚本失败:', error);
+        log('error', '批量生成脚本失败', { message: error.message });
         res.status(500).json({ 
+            success: false,
             error: '批量生成脚本失败', 
             message: error.message,
-            fallback: true 
+            fallback: true,
+            timestamp: new Date().toISOString()
         });
     }
 });
@@ -898,58 +586,113 @@ app.post('/api/test-search', async (req, res) => {
     try {
         const { query } = req.body;
         const results = await searchRokContent(query || '万国觉醒 凯撒');
-        res.json({ success: true, results, count: results.length });
+        res.json({ 
+            success: true, 
+            results, 
+            count: results.length,
+            timestamp: new Date().toISOString()
+        });
     } catch (error) {
-        res.status(500).json({ error: '搜索测试失败', message: error.message });
+        res.status(500).json({ 
+            success: false,
+            error: '搜索测试失败', 
+            message: error.message,
+            timestamp: new Date().toISOString()
+        });
     }
 });
 
 // 健康检查
 app.get('/api/health', (req, res) => {
-    res.json({ 
-        status: 'ok', 
+    const healthInfo = {
+        status: 'ok',
         service: '万国觉醒AI短剧脚本服务器(增强版)',
-        deepseek_configured: !!DEEPSEEK_API_KEY,
-        features: ['实时搜索', 'DeepSeek AI生成', '智能降级'],
+        version: '2.0.0',
+        environment: NODE_ENV,
+        deepseek_configured: !!(DEEPSEEK_API_KEY && !DEEPSEEK_API_KEY.includes('your-api-key')),
+        features: ['实时搜索', 'DeepSeek AI生成', '智能降级', '生产优化'],
+        server_time: new Date().toISOString(),
+        uptime: process.uptime(),
+        memory: process.memoryUsage(),
+        node_version: process.version,
+        cors_allowed_origins: ALLOWED_ORIGINS
+    };
+    
+    res.json(healthInfo);
+});
+
+// 根路径重定向
+app.get('/', (req, res) => {
+    res.redirect('/api/health');
+});
+
+// 404处理
+app.use((req, res) => {
+    res.status(404).json({
+        success: false,
+        error: '未找到资源',
+        message: `路径 ${req.originalUrl} 不存在`,
+        available_endpoints: [
+            'GET  /api/health',
+            'POST /api/generate-ideas',
+            'POST /api/generate-batch-scripts',
+            'POST /api/test-search'
+        ]
+    });
+});
+
+// 全局错误处理
+app.use((err, req, res, next) => {
+    log('error', '服务器错误', { 
+        message: err.message, 
+        stack: err.stack,
+        path: req.originalUrl 
+    });
+    
+    res.status(500).json({
+        success: false,
+        error: '服务器内部错误',
+        message: NODE_ENV === 'development' ? err.message : '请稍后重试',
         timestamp: new Date().toISOString()
     });
 });
 
-// 全局错误处理 - 防止服务器崩溃
-process.on('uncaughtException', (error) => {
-    console.error('未捕获的异常:', error);
-    console.error('异常堆栈:', error.stack);
-    console.log('服务器继续运行...');
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-    console.error('未处理的Promise拒绝:', reason);
-    console.log('服务器继续运行...');
-});
-
-// 启动服务器
-app.listen(PORT, () => {
+// ==================== 启动服务器 ====================
+const server = app.listen(PORT, () => {
     console.log('='.repeat(60));
-    console.log('万国觉醒AI短剧脚本服务器(增强版)');
-    console.log(`运行在 http://localhost:${PORT}`);
-    console.log(`DeepSeek API: ${DEEPSEEK_API_KEY ? '已配置' : '未配置'}`);
-    console.log('功能特性:');
-    console.log('  ✓ 实时联网搜索万国觉醒内容');
-    console.log('  ✓ DeepSeek AI智能生成');
-    console.log('  ✓ 智能降级机制');
-    console.log('  ✓ 游戏背景资料库');
-    console.log('  ✓ 创意保存与管理');
-    console.log('  ✓ 详细日志输出');
+    console.log('万国觉醒AI短剧脚本服务器(增强版) - 生产优化版');
+    console.log(`环境: ${NODE_ENV}`);
+    console.log(`运行在: http://localhost:${PORT}`);
+    console.log(`DeepSeek API: ${DEEPSEEK_API_KEY && !DEEPSEEK_API_KEY.includes('your-api-key') ? '已配置' : '未配置（使用备用数据）'}`);
+    console.log(`CORS允许的域名: ${ALLOWED_ORIGINS.join(', ')}`);
     console.log('='.repeat(60));
     console.log('API端点:');
-    console.log(`  GET  http://localhost:${PORT}/api/knowledge - 获取资料库`);
-    console.log(`  POST http://localhost:${PORT}/api/knowledge - 上传资料`);
-    console.log(`  GET  http://localhost:${PORT}/api/ideas - 获取保存的创意`);
-    console.log(`  POST http://localhost:${PORT}/api/ideas - 保存创意`);
-    console.log(`  POST http://localhost:${PORT}/api/generate-ideas - 生成创意`);
-    console.log(`  POST http://localhost:${PORT}/api/generate-batch-scripts - 批量生成脚本`);
-    console.log(`  GET  http://localhost:${PORT}/api/health - 健康检查`);
+    console.log(`  GET  http://localhost:${PORT}/api/health`);
+    console.log(`  POST http://localhost:${PORT}/api/generate-ideas`);
+    console.log(`  POST http://localhost:${PORT}/api/generate-batch-scripts`);
     console.log('='.repeat(60));
+    console.log('部署方式:');
+    console.log('  • Docker: docker-compose up -d');
+    console.log('  • Railway: railway up');
+    console.log('  • PM2: pm2 start ecosystem.config.js');
+    console.log('='.repeat(60));
+});
+
+// 优雅关闭
+process.on('SIGTERM', () => {
+    log('info', '收到SIGTERM信号，正在关闭服务器');
+    server.close(() => {
+        log('info', '服务器已关闭');
+        process.exit(0);
+    });
+});
+
+process.on('SIGINT', () => {
+    log('info', '收到SIGINT信号，正在关闭服务器');
+    server.close(() => {
+        log('info', '服务器已关闭');
+        process.exit(0);
+    });
 });
 
 module.exports = app;
