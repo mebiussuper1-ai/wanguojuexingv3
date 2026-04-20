@@ -6,7 +6,7 @@ const CONFIG = {
     // 本地开发: 'http://localhost:3001/api'
     // 生产环境: 'https://your-api-domain.com/api'
     // 请将 your-api-domain.com 替换为你的实际后端服务器地址
-    API_BASE_URL: 'https://your-api-domain.com/api',
+    API_BASE_URL: 'https://wanguojuexingv3-7lnv.vercel.app/api',
     
     // 是否启用调试模式
     ENABLE_DEBUG: true,

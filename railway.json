@@ -2,12 +2,25 @@
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
     "builder": "NIXPACKS",
-    "buildCommand": "npm install"
+    "buildCommand": "npm ci --only=production",
+    "nixpacksConfig": {
+      "phases": {
+        "setup": {
+          "cmds": [
+            "apt-get update && apt-get install -y curl",
+            "npm config set registry https://registry.npmmirror.com"
+          ]
+        },
+        "install": {
+          "cacheDirectories": ["/root/.npm", "/app/node_modules"]
+        }
+      }
+    }
   },
   "deploy": {
-    "startCommand": "node rok-ai-server-enhanced.js",
+    "startCommand": "npm run railway",
     "healthcheckPath": "/api/health",
-    "healthcheckTimeout": 30,
+    "healthcheckTimeout": 60,
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 3
   }

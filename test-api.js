@@ -2,7 +2,7 @@ const axios = require('axios');
 
 async function testBatchScripts() {
     try {
-        const response = await axios.post('http://localhost:3002/api/generate-batch-scripts', {
+        const response = await axios.post('https://wanguojuexingv3-7lnv.vercel.app/api/generate-batch-scripts', {
             idea: {
                 title: '测试创意标题',
                 description: '测试描述',

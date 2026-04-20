@@ -79,7 +79,7 @@
     <div class="server-info">
         <strong>服务器配置：</strong><br>
         端口：3002<br>
-        API地址：http://localhost:3002/api<br>
+        API地址：https://wanguojuexingv3-7lnv.vercel.app/api<br>
         DeepSeek API：已配置
     </div>
 
@@ -106,7 +106,7 @@
         <strong>启动服务器：</strong><br>
         1. 双击 <code>start.bat</code>（Windows）<br>
         2. 选择选项1（一键启动）<br>
-        3. 访问 <a href="http://localhost:3002">http://localhost:3002</a>
+        3. 访问 <a href="https://wanguojuexingv3-7lnv.vercel.app">https://wanguojuexingv3-7lnv.vercel.app</a>
     </div>
 
     <div class="footer">
@@ -116,7 +116,7 @@
 
     <script>
         // 简单服务器状态检查
-        fetch('http://localhost:3002/api/health')
+        fetch('https://wanguojuexingv3-7lnv.vercel.app/api/health')
             .then(res => res.ok ? console.log('服务器运行正常') : console.log('服务器异常'))
             .catch(() => console.log('服务器未启动'));
     </script>

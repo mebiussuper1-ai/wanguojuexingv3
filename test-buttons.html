@@ -157,7 +157,7 @@
             statusDiv.innerHTML = '测试中...';
             
             try {
-                const response = await fetch('http://localhost:3000/api/health');
+                const response = await fetch('https://wanguojuexingv3-7lnv.vercel.app/api/health');
                 if (response.ok) {
                     const data = await response.json();
                     log('API连接成功: ' + data.status);

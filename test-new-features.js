@@ -1,5 +1,5 @@
 const axios = require('axios');
-const API_BASE = 'http://localhost:3002/api';
+const API_BASE = 'https://wanguojuexingv3-7lnv.vercel.app/api';
 
 async function testNewFeatures() {
     console.log('=== 测试新功能 ===\n');

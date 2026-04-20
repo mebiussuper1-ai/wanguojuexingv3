@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node rok-ai-server-enhanced.js",
     "dev": "nodemon rok-ai-server-enhanced.js",
-    "prod": "NODE_ENV=production node rok-ai-server-enhanced.js",
+    "prod": "node rok-ai-server-enhanced.js",
+    "railway": "node rok-ai-server-enhanced.js",
     "docker:build": "docker build -t rok-ai-server .",
     "docker:run": "docker run -p 3001:3001 rok-ai-server",
     "docker:compose": "docker-compose up -d",

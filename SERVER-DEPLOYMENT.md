@@ -416,7 +416,7 @@ pm2 start rok-ai-server-enhanced.js -i max --name "rok-ai-cluster"
 ```nginx
 upstream rok_ai_servers {
     server localhost:3001;
-    server localhost:3002;
+    server mebiussuper1-ai.github.io:443;
     server localhost:3003;
 }
 

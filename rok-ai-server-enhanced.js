@@ -15,10 +15,25 @@ const LOG_LEVEL = process.env.LOG_LEVEL || 'info';
 const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
 const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || 'sk-fa24b5b42cf949839f0e5a2063c00a6b';
 
+// ==================== 调试信息 ====================
+console.log('🔧 环境配置检查:');
+console.log(`   PORT: ${PORT} (${typeof PORT})`);
+console.log(`   NODE_ENV: ${NODE_ENV}`);
+console.log(`   LOG_LEVEL: ${LOG_LEVEL}`);
+console.log(`   DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY ? '已设置' + (DEEPSEEK_API_KEY.includes('your-api-key') ? ' (默认值)' : '') : '未设置'}`);
+console.log(`   ALLOWED_ORIGINS 环境变量: ${process.env.ALLOWED_ORIGINS || '未设置，使用默认值'}`);
+console.log('🔧 开始初始化服务器...');
+
 // CORS配置 - 从环境变量读取允许的域名
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS 
     ? process.env.ALLOWED_ORIGINS.split(',') 
-    : ['http://localhost:3000', 'http://localhost:3001', 'https://mebiussuper1-ai.github.io'];
+    : [
+        'http://localhost:3000', 
+        'http://localhost:3001', 
+        'https://mebiussuper1-ai.github.io',
+        'https://wanguojuexingv3-7lnv-ipxms0av1-mebiussuper1-6563s-projects.vercel.app',
+        'https://wanguojuexingv3-7lnv.vercel.app'
+      ];
 
 const app = express();
 
@@ -658,41 +673,48 @@ app.use((err, req, res, next) => {
 });
 
 // ==================== 启动服务器 ====================
-const server = app.listen(PORT, () => {
-    console.log('='.repeat(60));
-    console.log('万国觉醒AI短剧脚本服务器(增强版) - 生产优化版');
-    console.log(`环境: ${NODE_ENV}`);
-    console.log(`运行在: http://localhost:${PORT}`);
-    console.log(`DeepSeek API: ${DEEPSEEK_API_KEY && !DEEPSEEK_API_KEY.includes('your-api-key') ? '已配置' : '未配置（使用备用数据）'}`);
-    console.log(`CORS允许的域名: ${ALLOWED_ORIGINS.join(', ')}`);
-    console.log('='.repeat(60));
-    console.log('API端点:');
-    console.log(`  GET  http://localhost:${PORT}/api/health`);
-    console.log(`  POST http://localhost:${PORT}/api/generate-ideas`);
-    console.log(`  POST http://localhost:${PORT}/api/generate-batch-scripts`);
-    console.log('='.repeat(60));
-    console.log('部署方式:');
-    console.log('  • Docker: docker-compose up -d');
-    console.log('  • Railway: railway up');
-    console.log('  • PM2: pm2 start ecosystem.config.js');
-    console.log('='.repeat(60));
-});
-
-// 优雅关闭
-process.on('SIGTERM', () => {
-    log('info', '收到SIGTERM信号，正在关闭服务器');
-    server.close(() => {
-        log('info', '服务器已关闭');
-        process.exit(0);
+// 只有在直接运行此文件时才启动服务器（避免在Serverless环境中启动）
+if (require.main === module) {
+    const server = app.listen(PORT, '0.0.0.0', () => {
+        console.log('='.repeat(60));
+        console.log('万国觉醒AI短剧脚本服务器(增强版) - 生产优化版');
+        console.log(`环境: ${NODE_ENV}`);
+        console.log(`运行在: http://0.0.0.0:${PORT}`);
+        console.log(`外部访问: http://your-railway-domain.up.railway.app (Railway自动分配)`);
+        console.log(`DeepSeek API: ${DEEPSEEK_API_KEY && !DEEPSEEK_API_KEY.includes('your-api-key') ? '已配置' : '未配置（使用备用数据）'}`);
+        console.log(`CORS允许的域名: ${ALLOWED_ORIGINS.join(', ')}`);
+        console.log('='.repeat(60));
+        console.log('API端点:');
+        console.log(`  GET  /api/health`);
+        console.log(`  POST /api/generate-ideas`);
+        console.log(`  POST /api/generate-batch-scripts`);
+        console.log('='.repeat(60));
+        console.log('部署方式:');
+        console.log('  • Docker: docker-compose up -d');
+        console.log('  • Railway: railway up');
+        console.log('  • PM2: pm2 start ecosystem.config.js');
+        console.log('='.repeat(60));
+        console.log('✅ 服务器已启动，等待连接...');
     });
-});
 
-process.on('SIGINT', () => {
-    log('info', '收到SIGINT信号，正在关闭服务器');
-    server.close(() => {
-        log('info', '服务器已关闭');
-        process.exit(0);
+    // 优雅关闭
+    process.on('SIGTERM', () => {
+        log('info', '收到SIGTERM信号，正在关闭服务器');
+        server.close(() => {
+            log('info', '服务器已关闭');
+            process.exit(0);
+        });
     });
-});
+
+    process.on('SIGINT', () => {
+        log('info', '收到SIGINT信号，正在关闭服务器');
+        server.close(() => {
+            log('info', '服务器已关闭');
+            process.exit(0);
+        });
+    });
+} else {
+    console.log('🔧 服务器模块已加载（Serverless模式）');
+}
 
 module.exports = app;

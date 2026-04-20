@@ -120,13 +120,13 @@ node test-new-features.js
 ### 手动测试API
 ```bash
 # 检查资料库
-curl http://localhost:3002/api/knowledge
+curl https://mebiussuper1-ai.github.io/wanguojuexingv3/api/knowledge
 
 # 检查创意库
-curl http://localhost:3002/api/ideas
+curl https://mebiussuper1-ai.github.io/wanguojuexingv3/api/ideas
 
 # 检查服务器状态
-curl http://localhost:3002/api/health
+curl https://mebiussuper1-ai.github.io/wanguojuexingv3/api/health
 ```
 
 ## 🐛 故障排除
@@ -147,7 +147,7 @@ node rok-ai-server-enhanced.js
 #### 2. 资料库无法上传
 **症状**：上传按钮无响应
 **检查**：
-- 服务器是否运行（访问 http://localhost:3002/api/health）
+- 服务器是否运行（访问 https://mebiussuper1-ai.github.io/wanguojuexingv3/api/health）
 - 浏览器控制台是否有错误（F12 → Console）
 - 网络连接是否正常
 
