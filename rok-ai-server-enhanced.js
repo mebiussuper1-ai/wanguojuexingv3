@@ -663,7 +663,7 @@ app.get('/api/test-simple', (req, res) => {
 });
 
 // 健康检查
-app.get('/api/health', (req, res) => {
+app.get('/health', (req, res) => {
     const healthInfo = {
         status: 'ok',
         service: '万国觉醒AI短剧脚本服务器(增强版)',

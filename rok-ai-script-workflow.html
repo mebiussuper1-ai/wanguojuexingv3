@@ -710,7 +710,8 @@
         // ============================================
         
         // API 配置
-        const API_BASE_URL = 'https://wanguojuexingv3-7lnv.vercel.app/api';
+        const API_BASE_URL = '/api'; // 相对路径，使用与页面相同的域名
+        const VERCELL_BYPASS_SECRET = 'oKe4BdTNZjS79GogeolHz6GP3gzGuPjg'; // Vercel部署保护绕过密钥
         const ENABLE_DEBUG = true; // 设置为false关闭调试信息
         
         // DOM 元素 - 使用更可靠的选择方式
@@ -876,7 +877,7 @@
                 debugLog('检查API健康状态...');
                 showStatus(elements.step1Status, '🔍 检查服务器连接...', 'info');
                 
-                const response = await fetch(`${API_BASE_URL}/health`);
+                const response = await fetch(`${API_BASE_URL}/health`, { headers: { 'x-vercel-protection-bypass': VERCELL_BYPASS_SECRET } });
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 
                 const data = await response.json();
