@@ -133,30 +133,61 @@ async function searchRokContent(query) {
 // 百度百科搜索
 async function searchBaiduBaike(query) {
     try {
+        log('info', `尝试搜索百度百科: ${query}`);
         const searchUrl = `https://baike.baidu.com/item/${encodeURIComponent('万国觉醒')}`;
+        
         const response = await axios.get(searchUrl, {
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+                'Accept-Encoding': 'gzip, deflate, br',
+                'Connection': 'keep-alive',
+                'Upgrade-Insecure-Requests': '1',
+                'Sec-Fetch-Dest': 'document',
+                'Sec-Fetch-Mode': 'navigate',
+                'Sec-Fetch-Site': 'none',
+                'Sec-Fetch-User': '?1',
+                'Cache-Control': 'max-age=0'
             },
-            timeout: 10000
+            timeout: 15000,
+            validateStatus: function (status) {
+                return status >= 200 && status < 500; // 接受4xx状态码
+            }
         });
         
-        const $ = cheerio.load(response.data);
-        const content = $('.lemma-summary').text() || $('.para').first().text();
+        log('info', `百度百科响应状态: ${response.status}`);
         
-        if (content) {
+        if (response.status !== 200) {
+            log('warn', `百度百科返回非200状态: ${response.status}`);
+            return [];
+        }
+        
+        const $ = cheerio.load(response.data);
+        const content = $('.lemma-summary').text() || $('.para').first().text() || $('meta[name="description"]').attr('content') || '';
+        
+        if (content && content.length > 50) {
             // 提取关键信息
             const lines = content.split(/[。!?；]/).filter(line => 
                 line.trim().length > 10 && 
-                (line.includes('万国觉醒') || line.includes('统帅') || line.includes('游戏') || line.includes('战争'))
+                (line.includes('万国觉醒') || line.includes('统帅') || line.includes('游戏') || line.includes('战争') || 
+                 line.includes('凯撒') || line.includes('曹操') || line.includes('源义经') || line.includes('腓特烈'))
             );
             
-            return lines.slice(0, 5).map(line => line.trim() + '。');
+            const results = lines.slice(0, 5).map(line => line.trim() + '。');
+            log('info', `从百度百科提取到 ${results.length} 条结果`);
+            return results;
+        } else {
+            log('warn', '百度百科内容为空或太短');
+            return [];
         }
         
-        return [];
     } catch (error) {
-        log('warn', '百度百科搜索失败', { message: error.message });
+        log('error', '百度百科搜索失败', { 
+            message: error.message,
+            code: error.code,
+            stack: error.stack?.split('\n')[0]
+        });
         return [];
     }
 }
@@ -615,6 +646,20 @@ app.post('/api/test-search', async (req, res) => {
             timestamp: new Date().toISOString()
         });
     }
+});
+
+// 简单测试端点 - 无依赖
+app.get('/api/test-simple', (req, res) => {
+    res.json({
+        success: true,
+        message: '服务器运行正常',
+        timestamp: new Date().toISOString(),
+        method: req.method,
+        path: req.path,
+        environment: NODE_ENV,
+        node_version: process.version,
+        vercel_env: process.env.VERCEL_ENV || '未检测到Vercel环境'
+    });
 });
 
 // 健康检查

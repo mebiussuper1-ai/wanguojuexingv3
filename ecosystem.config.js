@@ -28,7 +28,7 @@ module.exports = {
     listen_timeout: 3000,
     // 健康检查
     health_check: {
-      url: 'https://mebiussuper1-ai.github.io/wanguojuexingv3/api/health',
+      url: 'https://wanguojuexingv3-7lnv.vercel.app/api/health',
       interval: 30000,  // 30秒
       timeout: 5000
     }
