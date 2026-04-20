@@ -710,7 +710,30 @@
         // ============================================
         
         // API 配置
-        const API_BASE_URL = '/api'; // 相对路径，使用与页面相同的域名
+        // 动态API地址配置
+        const API_BASE_URL = (function() {
+            const hostname = window.location.hostname;
+            const protocol = window.location.protocol;
+            
+            // GitHub Pages环境
+            if (hostname.includes('github.io')) {
+                return 'https://wanguojuexingv3-six.vercel.app/api';
+            }
+            
+            // Vercel环境
+            if (hostname.includes('vercel.app')) {
+                return '/api'; // 相对路径
+            }
+            
+            // 本地开发环境
+            if (hostname === 'localhost' || hostname === '127.0.0.1') {
+                return 'http://localhost:3001/api';
+            }
+            
+            // 默认使用相对路径
+            return '/api';
+        })();
+        
         const VERCELL_BYPASS_SECRET = 'oKe4BdTNZjS79GogeolHz6GP3gzGuPjg'; // Vercel部署保护绕过密钥
         const ENABLE_DEBUG = true; // 设置为false关闭调试信息
         
@@ -942,7 +965,8 @@
                 const response = await fetch(`${API_BASE_URL}/generate-ideas`, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'x-vercel-protection-bypass': VERCELL_BYPASS_SECRET
                     },
                     body: JSON.stringify({ requirement })
                 });
@@ -1097,7 +1121,8 @@
                 const response = await fetch(`${API_BASE_URL}/generate-ideas`, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'x-vercel-protection-bypass': VERCELL_BYPASS_SECRET
                     },
                     body: JSON.stringify({ requirement })
                 });
@@ -1165,7 +1190,8 @@
                 const response = await fetch(`${API_BASE_URL}/generate-batch-scripts`, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'x-vercel-protection-bypass': VERCELL_BYPASS_SECRET
                     },
                     body: JSON.stringify({ 
                         idea: selectedIdea, 
@@ -1330,7 +1356,8 @@
                 const response = await fetch(`${API_BASE_URL}/generate-batch-scripts`, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'x-vercel-protection-bypass': VERCELL_BYPASS_SECRET
                     },
                     body: JSON.stringify({ 
                         idea: selectedIdea, 
