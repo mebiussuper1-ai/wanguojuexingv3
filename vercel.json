@@ -1,33 +1,10 @@
 {
   "version": 2,
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/api/index.js",
-      "headers": {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization"
-      }
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/$1",
-      "continue": true
-    }
-  ],
-  "env": {
-    "NODE_ENV": "production",
-    "LOG_LEVEL": "info"
-  },
   "functions": {
     "api/index.js": {
       "maxDuration": 60,
-      "memory": 1024,
-      "runtime": "nodejs18.x"
+      "memory": 1024
     }
   },
-  "installCommand": "npm install --legacy-peer-deps",
-  "framework": null,
-  "outputDirectory": ".vercel/output"
+  "installCommand": "npm install --legacy-peer-deps"
 }
