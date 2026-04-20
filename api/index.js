@@ -55,6 +55,14 @@ try {
         return res.status(200).end();
       }
       
+      // 在Serverless环境中，Vercel会移除/api前缀，我们需要将其添加回去
+      // 这样Express应用可以一直使用/api前缀的路由
+      const originalUrl = req.url;
+      if (!originalUrl.startsWith('/api/')) {
+        req.url = '/api' + (originalUrl === '/' ? '' : originalUrl);
+        console.log(`🔧 重写请求路径: ${originalUrl} -> ${req.url}`);
+      }
+      
       // 将请求传递给 Express 应用
       return app(req, res);
       
