@@ -1211,6 +1211,10 @@
                     <div class="btn btn-primary" id="generate-scripts" onclick="handleBtnClick('generate-scripts')" style="cursor:pointer;pointer-events:auto;position:relative;z-index:10;">
                         <i class="fas fa-scroll"></i> 基于选定创意生成脚本
                     </div>
+                    <div class="btn btn-library-outline" id="save-all-ideas-btn" onclick="saveAllIdeas()" style="cursor:pointer;pointer-events:auto;position:relative;z-index:10;padding:12px 20px;border-radius:8px;font-weight:600;font-size:0.95rem;display:flex;align-items:center;gap:8px;border:2px solid var(--color-gold);color:var(--color-gold);background:transparent;transition:all 0.3s;font-family:var(--font-body);"
+                         onmouseover="this.style.background='rgba(212,175,55,0.1)'" onmouseout="this.style.background='transparent'">
+                        <i class="fas fa-folder-plus"></i> 一键保存全部到创意库
+                    </div>
                 </div>
             </div>
 
@@ -1669,6 +1673,71 @@
             }
         }
         
+        // 保存单个创意到创意库
+        async function saveSingleIdea(index) {
+            if (index < 0 || index >= ideas.length) return;
+            const idea = ideas[index];
+            try {
+                const res = await fetch(`${API_BASE_URL}/ideas`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'x-vercel-protection-bypass': VERCELL_BYPASS_SECRET },
+                    body: JSON.stringify({
+                        title: idea.title,
+                        description: idea.description,
+                        tags: idea.tags || [],
+                        characters: idea.characters || [],
+                        platform: idea.platform || '抖音/快手',
+                        duration: idea.duration || '60-90秒',
+                        source: 'ai-generated'
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showToast(`✅ "${idea.title}" 已保存到创意库`, 'success');
+                    refreshIdeas();
+                } else {
+                    showToast('❌ 保存失败: ' + (data.error || '未知错误'), 'error');
+                }
+            } catch (e) {
+                showToast('❌ 保存失败: ' + e.message, 'error');
+            }
+        }
+        
+        // 一键保存全部创意到创意库
+        async function saveAllIdeas() {
+            if (!ideas || ideas.length === 0) {
+                showToast('当前没有可保存的创意', 'error');
+                return;
+            }
+            
+            const btn = document.getElementById('save-all-ideas-btn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<span class="loader"></span> 保存中...';
+            btn.style.pointerEvents = 'none';
+            btn.style.opacity = '0.6';
+            
+            try {
+                const res = await fetch(`${API_BASE_URL}/ideas/batch`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'x-vercel-protection-bypass': VERCELL_BYPASS_SECRET },
+                    body: JSON.stringify({ ideas })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showToast(`✅ 全部 ${data.count} 个创意已保存到创意库`, 'success');
+                    refreshIdeas();
+                } else {
+                    showToast('❌ 保存失败: ' + (data.error || '未知错误'), 'error');
+                }
+            } catch (e) {
+                showToast('❌ 保存失败: ' + e.message, 'error');
+            } finally {
+                btn.innerHTML = originalText;
+                btn.style.pointerEvents = 'auto';
+                btn.style.opacity = '1';
+            }
+        }
+        
         // 开始工作流
         async function startWorkflow() {
             const requirement = elements.requirementTextarea.value.trim();
@@ -1751,8 +1820,17 @@
             ideas.forEach((idea, index) => {
                 const card = document.createElement('div');
                 card.className = 'result-card';
+                card.style.cursor = 'pointer';
                 card.innerHTML = `
-                    <h4>${idea.title}</h4>
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                        <h4 style="flex:1;">${idea.title}</h4>
+                        <button onclick="event.stopPropagation();saveSingleIdea(${index})" 
+                                style="background:var(--color-dark-red);color:white;border:none;border-radius:6px;padding:6px 14px;font-size:0.8rem;font-weight:600;cursor:pointer;white-space:nowrap;margin-left:10px;transition:all 0.2s;"
+                                onmouseover="this.style.background='#a30000'" onmouseout="this.style.background='var(--color-dark-red)'"
+                                title="保存到创意库">
+                            <i class="fas fa-save"></i> 保存
+                        </button>
+                    </div>
                     <p>${idea.description}</p>
                     <div class="tags">
                         ${(idea.tags || []).map(tag => `<span class="tag">${tag}</span>`).join('')}
