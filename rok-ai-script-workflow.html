@@ -750,6 +750,25 @@
         .library-item .item-btn-use:hover {
             background: #a30000;
         }
+        .library-item .item-btn-ref {
+            background: #4caf50;
+            color: white;
+        }
+        .library-item .item-btn-ref:hover {
+            background: #45a049;
+        }
+        .library-item .item-btn-unref {
+            background: rgba(76, 175, 80, 0.15);
+            color: #4caf50;
+        }
+        .library-item .item-btn-unref:hover {
+            background: rgba(76, 175, 80, 0.3);
+        }
+        .library-item.ref-selected {
+            border-top-color: #4caf50 !important;
+            box-shadow: 0 0 0 2px #4caf50, 0 8px 20px rgba(0,0,0,0.2) !important;
+            background: rgba(245,232,208,1) !important;
+        }
         .library-item .item-btn-edit {
             background: var(--color-gold);
             color: var(--color-deep-brown);
@@ -1148,8 +1167,13 @@
                 <i class="fas fa-lightbulb"></i> 创意库 <span class="badge" id="ideas-count">0</span>
             </button>
             <button class="nav-tab" data-panel="references" onclick="switchPanel('references')">
-                <i class="fas fa-book"></i> 资料库 <span class="badge" id="refs-count">0</span>
+                <i class="fas fa-book"></i> 资料库 <span class="badge" id="refs-count">0</span> <span class="badge" id="ref-badge" style="display:none;background:#4caf50;color:white;font-size:0.65rem;padding:2px 6px;"></span>
             </button>
+        </div>
+
+        <!-- 参考引用状态栏 -->
+        <div id="selected-info" style="text-align:center;padding:10px 20px;font-size:0.9rem;color:var(--color-parchment);background:rgba(44,24,16,0.5);border-radius:8px;margin-bottom:20px;border:1px solid rgba(212,175,55,0.2);">
+            <i class="fas fa-info-circle"></i> 未选择任何参考，AI将使用所有资料
         </div>
 
         <!-- 工作流面板 -->
@@ -1756,6 +1780,9 @@
             showStatus(elements.step1Status, '🔍 正在联网搜索万国觉醒相关内容...', 'info');
             
             try {
+                // 获取选定的参考资料
+                const refSummary = SELECTION.getSummaryText();
+                
                 // 调用API生成创意（包含实时搜索）
                 const response = await fetch(`${API_BASE_URL}/generate-ideas`, {
                     method: 'POST',
@@ -1763,7 +1790,10 @@
                         'Content-Type': 'application/json',
                         'x-vercel-protection-bypass': VERCELL_BYPASS_SECRET
                     },
-                    body: JSON.stringify({ requirement })
+                    body: JSON.stringify({ 
+                        requirement: refSummary ? `${requirement}\n\n【以下为参考内容】${refSummary}` : requirement,
+                        useLibrary: true 
+                    })
                 });
                 
                 if (!response.ok) {
@@ -1938,6 +1968,8 @@
             showStatus(elements.step2Status, '🔄 AI正在重新生成创意...', 'info');
             
             try {
+                // 获取选定的参考资料
+                const refSummary = SELECTION.getSummaryText();
                 // 调用API重新生成创意
                 const response = await fetch(`${API_BASE_URL}/generate-ideas`, {
                     method: 'POST',
@@ -1945,7 +1977,10 @@
                         'Content-Type': 'application/json',
                         'x-vercel-protection-bypass': VERCELL_BYPASS_SECRET
                     },
-                    body: JSON.stringify({ requirement })
+                    body: JSON.stringify({ 
+                        requirement: refSummary ? `${requirement}\n\n【以下为参考内容】${refSummary}` : requirement,
+                        useLibrary: true 
+                    })
                 });
                 
                 if (!response.ok) {
@@ -2001,6 +2036,10 @@
             showStatus(elements.step3Status, '🤖 DeepSeek AI正在创作短剧脚本...', 'info');
             
             try {
+                // 获取选定的参考资料
+                const refSummary = SELECTION.getSummaryText();
+                const enhancedReq = refSummary ? `${requirement}\n\n【以下为参考内容，请确保脚本与游戏设定一致】${refSummary}` : requirement;
+                
                 // 调用API批量生成脚本
                 const response = await fetch(`${API_BASE_URL}/generate-batch-scripts`, {
                     method: 'POST',
@@ -2010,7 +2049,7 @@
                     },
                     body: JSON.stringify({ 
                         idea: selectedIdea, 
-                        requirement,
+                        requirement: enhancedReq,
                         count: 3 
                     })
                 });
@@ -2453,13 +2492,16 @@
             empty.style.display = 'none';
             batchBar.style.display = 'flex';
             
-            grid.innerHTML = ideas.map((idea, idx) => `
-                <div class="library-item" data-idx="${idx}">
+            grid.innerHTML = ideas.map((idea, idx) => {
+                const isSelected = SELECTION.isIdeaSelected(idea.id);
+                return `
+                <div class="library-item" data-idx="${idx}" style="border-top-color: ${isSelected ? '#4caf50' : 'var(--color-gold)'};${isSelected ? 'box-shadow:0 0 0 2px #4caf50, 0 8px 20px rgba(0,0,0,0.2);background:rgba(245,232,208,1);' : ''}">
                     <button class="item-delete" onclick="deleteIdea('${idea.id}')" title="删除"><i class="fas fa-times"></i></button>
+                    ${isSelected ? '<span style="position:absolute;top:12px;right:50px;color:#4caf50;font-size:1rem;" title="已选为参考"><i class="fas fa-check-circle"></i></span>' : ''}
                     <span class="source-badge ${idea.source === 'ai-generated' ? 'ai' : 'manual'}">
                         ${idea.source === 'ai-generated' ? 'AI生成' : '手动创建'}
                     </span>
-                    <div class="item-title">${escapeHtml(idea.title)}</div>
+                    <div class="item-title">${escapeHtml(idea.title)}${isSelected ? ' <span style="color:#4caf50;font-size:0.8rem;">✓ 参考中</span>' : ''}</div>
                     <div class="item-desc">${escapeHtml(idea.description)}</div>
                     <div class="item-tags">${(idea.tags || []).map(t => `<span class="item-tag">${escapeHtml(t)}</span>`).join('')}</div>
                     <div class="item-meta">
@@ -2468,15 +2510,15 @@
                         <span><i class="fas fa-calendar"></i> ${new Date(idea.createdAt).toLocaleDateString()}</span>
                     </div>
                     <div class="item-actions">
-                        <button class="item-btn item-btn-use" onclick="useIdeaInWorkflow('${idea.id}')">
-                            <i class="fas fa-file-export"></i> 用作创意
+                        <button class="item-btn ${isSelected ? 'item-btn-edit' : 'item-btn-use'}" onclick="SELECTION.toggleIdea('${idea.id}');renderIdeasGrid(DataStore.get(DataStore.KEYS.IDEAS));">
+                            <i class="fas ${isSelected ? 'fa-times-circle' : 'fa-check-circle'}"></i> ${isSelected ? '取消参考' : '设为参考'}
                         </button>
                         <button class="item-btn item-btn-delete" onclick="deleteIdea('${idea.id}')">
                             <i class="fas fa-trash"></i> 删除
                         </button>
                     </div>
-                </div>
-            `).join('');
+                </div>`;
+            }).join('');
         }
 
         // 保存当前AI生成的创意到创意库
@@ -2631,14 +2673,18 @@
             
             empty.style.display = 'none';
             
-            grid.innerHTML = refs.map(ref => `
-                <div class="library-item" style="border-top-color: var(--color-dark-red);">
+            grid.innerHTML = refs.map(ref => {
+                const isSelected = SELECTION.isRefSelected(ref.id);
+                return `
+                <div class="library-item" style="border-top-color: ${isSelected ? '#4caf50' : 'var(--color-dark-red)'};${isSelected ? 'box-shadow:0 0 0 2px #4caf50, 0 8px 20px rgba(0,0,0,0.2);background:rgba(245,232,208,1);' : ''}">
                     <button class="item-delete" onclick="deleteReference('${ref.id}')" title="删除"><i class="fas fa-times"></i></button>
-                    <div style="margin-bottom:8px;">
+                    ${isSelected ? '<span style="position:absolute;top:12px;right:50px;color:#4caf50;font-size:1rem;" title="已选为参考"><i class="fas fa-check-circle"></i></span>' : ''}
+                    <div style="margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
                         <span class="ref-type-badge ${ref.type === 'file' ? 'file' : 'text'}">
                             <i class="fas ${ref.type === 'file' ? 'fa-file' : 'fa-file-alt'}"></i> 
                             ${ref.type === 'file' ? '文件' : '文字'}
                         </span>
+                        ${isSelected ? '<span style="color:#4caf50;font-size:0.8rem;font-weight:600;"><i class="fas fa-check-circle"></i> 参考中</span>' : ''}
                     </div>
                     <div class="item-title">${escapeHtml(ref.title)}</div>
                     <div class="ref-content">${escapeHtml(ref.content)}</div>
@@ -2647,15 +2693,15 @@
                         <span><i class="fas fa-file-lines"></i> ${ref.content.length} 字</span>
                     </div>
                     <div class="item-actions">
-                        <button class="item-btn item-btn-edit" onclick="showToast('📋 已设为参考，将自动用于AI生成', 'info')">
-                            <i class="fas fa-check-circle"></i> 设为参考
+                        <button class="item-btn ${isSelected ? 'item-btn-edit' : 'item-btn-use'}" onclick="SELECTION.toggleRef('${ref.id}');renderRefsGrid(DataStore.get(DataStore.KEYS.REFERENCES));">
+                            <i class="fas ${isSelected ? 'fa-times-circle' : 'fa-check-circle'}"></i> ${isSelected ? '取消参考' : '设为参考'}
                         </button>
                         <button class="item-btn item-btn-delete" onclick="deleteReference('${ref.id}')">
                             <i class="fas fa-trash"></i> 删除
                         </button>
                     </div>
-                </div>
-            `).join('');
+                </div>`;
+            }).join('');
         }
 
         // 新增资料模态框
@@ -2759,9 +2805,83 @@
         }
 
         // ============================================
-        // 工具函数
+        // 参考引用选择系统
         // ============================================
-        function generateId(prefix) {
+        const SELECTION = {
+            IDEAS_KEY: 'rok_selected_ideas',
+            REFS_KEY: 'rok_selected_refs',
+
+            getIdeas() {
+                try { return JSON.parse(localStorage.getItem(this.IDEAS_KEY) || '[]'); } catch(e) { return []; }
+            },
+            getRefs() {
+                try { return JSON.parse(localStorage.getItem(this.REFS_KEY) || '[]'); } catch(e) { return []; }
+            },
+            setIdeas(ids) {
+                localStorage.setItem(this.IDEAS_KEY, JSON.stringify(ids));
+                this.updateUI();
+            },
+            setRefs(ids) {
+                localStorage.setItem(this.REFS_KEY, JSON.stringify(ids));
+                this.updateUI();
+            },
+            toggleIdea(id) {
+                let ids = this.getIdeas();
+                ids = ids.includes(id) ? ids.filter(i => i !== id) : [...ids, id];
+                this.setIdeas(ids);
+                return ids.includes(id);
+            },
+            toggleRef(id) {
+                let ids = this.getRefs();
+                ids = ids.includes(id) ? ids.filter(i => i !== id) : [...ids, id];
+                this.setRefs(ids);
+                return ids.includes(id);
+            },
+            isIdeaSelected(id) { return this.getIdeas().includes(id); },
+            isRefSelected(id) { return this.getRefs().includes(id); },
+            clearAll() {
+                this.setIdeas([]);
+                this.setRefs([]);
+            },
+            updateUI() {
+                // 更新导航栏引用计数
+                const ideaCount = this.getIdeas().length;
+                const refCount = this.getRefs().length;
+                const badge = document.getElementById('ref-badge');
+                if (badge) {
+                    badge.textContent = refCount > 0 ? `✓${refCount}` : '';
+                    badge.style.display = refCount > 0 ? 'inline-block' : 'none';
+                }
+                document.getElementById('selected-info').innerHTML =
+                    ideaCount > 0 || refCount > 0
+                        ? `<i class="fas fa-check-circle" style="color:var(--color-gold)"></i> 已选 <strong>${ideaCount}</strong> 个创意 · <strong>${refCount}</strong> 份资料作为参考 | <a href="#" onclick="SELECTION.clearAll();showToast('已清除所有参考选择','info');return false;" style="color:var(--color-dark-red);text-decoration:underline;">清除全部</a>`
+                        : `<i class="fas fa-info-circle"></i> 未选择任何参考，AI将使用所有资料`;
+            },
+            // 获取选定参考的文本摘要（用于AI提示）
+            getSummaryText() {
+                const ideas = DataStore.get(DataStore.KEYS.IDEAS);
+                const refs = DataStore.get(DataStore.KEYS.REFERENCES);
+                const selIdeaIds = this.getIdeas();
+                const selRefIds = this.getRefs();
+
+                // 如果没有任何选择，使用全部
+                const selectedIdeas = selIdeaIds.length > 0
+                    ? ideas.filter(i => selIdeaIds.includes(i.id))
+                    : ideas;
+                const selectedRefs = selRefIds.length > 0
+                    ? refs.filter(r => selRefIds.includes(r.id))
+                    : refs;
+
+                let text = '';
+                if (selectedRefs.length > 0) {
+                    text += '\n\n【参考资料库内容】\n' + selectedRefs.map(r => `《${r.title}》${r.content.substring(0, 300)}`).join('\n---\n');
+                }
+                if (selectedIdeas.length > 0) {
+                    text += '\n\n【参考创意库已有创意】\n' + selectedIdeas.map(i => `《${i.title}》${i.description}`).join('\n');
+                }
+                return text;
+            }
+        };
             const timestamp = Date.now().toString(36);
             const random = Math.random().toString(36).substring(2, 6);
             return `${prefix}-${timestamp}-${random}`;
@@ -2774,10 +2894,11 @@
             return div.innerHTML;
         }
 
-        // 加载完成后刷新坏ge
+        // 加载完成后刷新
         document.addEventListener('DOMContentLoaded', function() {
-            // 初始加载数据
+            // 初始化参考选择UI
             setTimeout(() => {
+                SELECTION.updateUI();
                 refreshIdeas();
                 refreshReferences();
             }, 1000);
