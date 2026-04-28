@@ -333,10 +333,11 @@
             box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
         }
 
-        .btn:disabled {
+        .btn.disabled {
             opacity: 0.6;
-            cursor: not-allowed;
+            cursor: not-allowed !important;
             transform: none;
+            pointer-events: auto !important;
         }
 
         /* 结果区域 */
@@ -655,13 +656,13 @@
                 <div class="results" id="idea-results">
                     <!-- 创意卡片将通过JS动态生成 -->
                 </div>
-                <div class="button-group">
-                    <button class="btn btn-secondary" id="regenerate-ideas">
+                <div class="button-group" id="regen-group">
+                    <div class="btn btn-secondary" id="regenerate-ideas" onclick="handleBtnClick('regenerate-ideas')" style="cursor:pointer;pointer-events:auto;position:relative;z-index:10;">
                         <i class="fas fa-redo"></i> 重新生成创意
-                    </button>
-                    <button class="btn btn-primary" id="generate-scripts" disabled>
+                    </div>
+                    <div class="btn btn-primary" id="generate-scripts" onclick="handleBtnClick('generate-scripts')" style="cursor:pointer;pointer-events:auto;position:relative;z-index:10;">
                         <i class="fas fa-scroll"></i> 基于选定创意生成脚本
-                    </button>
+                    </div>
                 </div>
             </div>
 
@@ -800,6 +801,43 @@
                 }, 3000);
             }
         }
+
+        // ============ 全局按钮点击处理（使用HTML内联onclick，最可靠的方式） ============
+        
+        // 禁用/启用 div 按钮（通过CSS类，因为div不支持disabled属性）
+        function setBtnDisabled(id, disabled) {
+            const btn = document.getElementById(id) || elements[id];
+            if (!btn) return;
+            if (disabled) {
+                btn.classList.add('disabled');
+            } else {
+                btn.classList.remove('disabled');
+            }
+        }
+        
+        // 全局点击处理器 - 由 HTML onclick 属性调用
+        function handleBtnClick(id) {
+            const btn = document.getElementById(id);
+            if (!btn) return;
+            // 检查是否被禁用状态（有disabled CSS类）
+            if (btn.classList.contains('disabled')) {
+                debugLog(`${id} 按钮已被禁用，忽略点击`);
+                return;
+            }
+            debugLog(`按钮点击: ${id}`);
+            
+            // 路由到对应的处理函数
+            switch (id) {
+                case 'regenerate-ideas':
+                    regenerateIdeas();
+                    break;
+                case 'generate-scripts':
+                    generateScripts();
+                    break;
+                default:
+                    debugLog(`未知按钮ID: ${id}`);
+            }
+        }
         
         // 更新进度指示器
         function updateProgress(step) {
@@ -858,8 +896,6 @@
             const buttons = [
                 { id: 'search-btn', event: 'click', handler: startWorkflow },
                 { id: 'example-btn', event: 'click', handler: showExample },
-                { id: 'regenerate-ideas', event: 'click', handler: regenerateIdeas },
-                { id: 'generate-scripts', event: 'click', handler: generateScripts },
                 { id: 'regenerate-scripts', event: 'click', handler: regenerateScripts },
                 { id: 'export-all', event: 'click', handler: exportScripts }
             ];
@@ -935,7 +971,7 @@
                 }
                 
                 selectedIdeaId = ideas[index].id;
-                elements.generateScriptsBtn.disabled = false;
+                setBtnDisabled('generate-scripts', false);
                 elements.generateScriptsBtn.innerHTML = `<i class="fas fa-scroll"></i> 基于"${ideas[index].title}"生成脚本`;
                 
                 debugLog(`选择创意: ${ideas[index].title} (ID: ${selectedIdeaId})`);
@@ -1046,7 +1082,7 @@
             } else {
                 // 重置选择状态（无创意时）
                 selectedIdeaId = null;
-                elements.generateScriptsBtn.disabled = true;
+                setBtnDisabled('generate-scripts', true);
                 elements.generateScriptsBtn.innerHTML = '<i class="fas fa-scroll"></i> 基于选定创意生成脚本';
             }
             
@@ -1130,7 +1166,7 @@
             
             // 显示加载状态
             elements.regenerateIdeasBtn.innerHTML = '<span class="loader"></span> 重新生成中...';
-            elements.regenerateIdeasBtn.disabled = true;
+            setBtnDisabled('regenerate-ideas', true);
             showStatus(elements.step2Status, '🔄 AI正在重新生成创意...', 'info');
             
             try {
@@ -1167,7 +1203,7 @@
             } finally {
                 // 恢复按钮
                 elements.regenerateIdeasBtn.innerHTML = '<i class="fas fa-redo"></i> 重新生成创意';
-                elements.regenerateIdeasBtn.disabled = false;
+                setBtnDisabled('regenerate-ideas', false);
             }
         }
         
@@ -1193,7 +1229,7 @@
             
             // 显示加载状态
             elements.generateScriptsBtn.innerHTML = '<span class="loader"></span> AI生成脚本中...';
-            elements.generateScriptsBtn.disabled = true;
+            setBtnDisabled('generate-scripts', true);
             showStatus(elements.step3Status, '🤖 DeepSeek AI正在创作短剧脚本...', 'info');
             
             try {
@@ -1234,7 +1270,7 @@
             } finally {
                 // 恢复按钮
                 elements.generateScriptsBtn.innerHTML = '<i class="fas fa-scroll"></i> 基于选定创意生成脚本';
-                elements.generateScriptsBtn.disabled = false;
+                setBtnDisabled('generate-scripts', false);
                 
                 // 滚动到第三步
                 if (elements.stepCard3) {
