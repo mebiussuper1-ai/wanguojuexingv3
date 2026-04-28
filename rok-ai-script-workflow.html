@@ -1039,10 +1039,27 @@
                 elements.ideaResults.appendChild(card);
             });
             
-            // 重置选择状态
-            selectedIdeaId = null;
-            elements.generateScriptsBtn.disabled = true;
-            elements.generateScriptsBtn.innerHTML = '<i class="fas fa-scroll"></i> 基于选定创意生成脚本';
+            // 自动选中第一个创意，使用户无需手动点击卡片
+            if (ideas.length > 0) {
+                selectIdea(0);
+                debugLog('自动选中第一个创意');
+            } else {
+                // 重置选择状态（无创意时）
+                selectedIdeaId = null;
+                elements.generateScriptsBtn.disabled = true;
+                elements.generateScriptsBtn.innerHTML = '<i class="fas fa-scroll"></i> 基于选定创意生成脚本';
+            }
+            
+            // 卡片点击事件：直接绑定到每个卡片（兼容事件委托在某些设备上的失效问题）
+            setTimeout(() => {
+                elements.ideaResults.querySelectorAll('.result-card').forEach((card, index) => {
+                    card.onclick = (e) => {
+                        e.stopPropagation();
+                        selectIdea(index);
+                        debugLog(`卡片点击选中: ${ideas[index]?.title || index}`);
+                    };
+                });
+            }, 100);
         }
         
         // 生成备用创意（智能模拟数据）
@@ -1136,9 +1153,6 @@
                 if (data.success) {
                     ideas = data.ideas;
                     renderIdeas();
-                    selectedIdeaId = null;
-                    elements.generateScriptsBtn.disabled = true;
-                    elements.generateScriptsBtn.innerHTML = '<i class="fas fa-scroll"></i> 基于选定创意生成脚本';
                     showStatus(elements.step2Status, '✅ 创意重新生成成功！', 'success');
                     debugLog(`重新生成${ideas.length}个创意`);
                 } else {
@@ -1148,11 +1162,8 @@
                 console.error('重新生成创意失败:', error);
                 debugLog(`重新生成创意失败: ${error.message}`);
                 showStatus(elements.step2Status, `⚠️ AI重新生成失败: ${error.message}，使用备用数据`, 'error');
-                // 使用智能备用数据重新生成
+                // 使用智能备用数据重新生成（renderIdeas会自动选中第一个创意）
                 generateFallbackIdeas(requirement);
-                selectedIdeaId = null;
-                elements.generateScriptsBtn.disabled = true;
-                elements.generateScriptsBtn.innerHTML = '<i class="fas fa-scroll"></i> 基于选定创意生成脚本';
             } finally {
                 // 恢复按钮
                 elements.regenerateIdeasBtn.innerHTML = '<i class="fas fa-redo"></i> 重新生成创意';
