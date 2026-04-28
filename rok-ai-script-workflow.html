@@ -1677,30 +1677,29 @@
         async function saveSingleIdea(index) {
             if (index < 0 || index >= ideas.length) return;
             const idea = ideas[index];
-            try {
-                const res = await fetch(`${API_BASE_URL}/ideas`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'x-vercel-protection-bypass': VERCELL_BYPASS_SECRET },
-                    body: JSON.stringify({
-                        title: idea.title,
-                        description: idea.description,
-                        tags: idea.tags || [],
-                        characters: idea.characters || [],
-                        platform: idea.platform || '抖音/快手',
-                        duration: idea.duration || '60-90秒',
-                        source: 'ai-generated'
-                    })
-                });
-                const data = await res.json();
-                if (data.success) {
-                    showToast(`✅ "${idea.title}" 已保存到创意库`, 'success');
-                    refreshIdeas();
-                } else {
-                    showToast('❌ 保存失败: ' + (data.error || '未知错误'), 'error');
-                }
-            } catch (e) {
-                showToast('❌ 保存失败: ' + e.message, 'error');
-            }
+            
+            // 1. 立即保存到 localStorage
+            const stored = DataStore.get(DataStore.KEYS.IDEAS);
+            const newItem = {
+                id: generateId('idea'),
+                title: idea.title,
+                description: idea.description,
+                tags: idea.tags || [],
+                characters: idea.characters || [],
+                platform: idea.platform || '抖音/快手',
+                duration: idea.duration || '60-90秒',
+                createdAt: new Date().toISOString(),
+                source: 'ai-generated'
+            };
+            stored.push(newItem);
+            DataStore.set(DataStore.KEYS.IDEAS, stored);
+            
+            // 2. 异步同步到服务器
+            DataStore.syncToAPI(DataStore.KEYS.IDEAS, newItem, `${API_BASE_URL}/ideas`, 
+                (d) => JSON.stringify(d));
+            
+            showToast(`✅ "${idea.title}" 已保存到创意库`, 'success');
+            refreshIdeas();
         }
         
         // 一键保存全部创意到创意库
@@ -1710,32 +1709,32 @@
                 return;
             }
             
-            const btn = document.getElementById('save-all-ideas-btn');
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '<span class="loader"></span> 保存中...';
-            btn.style.pointerEvents = 'none';
-            btn.style.opacity = '0.6';
+            // 1. 批量保存到 localStorage
+            const stored = DataStore.get(DataStore.KEYS.IDEAS);
+            const saved = [];
+            ideas.forEach(idea => {
+                const newItem = {
+                    id: generateId('idea'),
+                    title: idea.title,
+                    description: idea.description,
+                    tags: idea.tags || [],
+                    characters: idea.characters || [],
+                    platform: idea.platform || '抖音/快手',
+                    duration: idea.duration || '60-90秒',
+                    createdAt: new Date().toISOString(),
+                    source: 'ai-generated'
+                };
+                stored.push(newItem);
+                saved.push(newItem);
+            });
+            DataStore.set(DataStore.KEYS.IDEAS, stored);
             
-            try {
-                const res = await fetch(`${API_BASE_URL}/ideas/batch`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'x-vercel-protection-bypass': VERCELL_BYPASS_SECRET },
-                    body: JSON.stringify({ ideas })
-                });
-                const data = await res.json();
-                if (data.success) {
-                    showToast(`✅ 全部 ${data.count} 个创意已保存到创意库`, 'success');
-                    refreshIdeas();
-                } else {
-                    showToast('❌ 保存失败: ' + (data.error || '未知错误'), 'error');
-                }
-            } catch (e) {
-                showToast('❌ 保存失败: ' + e.message, 'error');
-            } finally {
-                btn.innerHTML = originalText;
-                btn.style.pointerEvents = 'auto';
-                btn.style.opacity = '1';
-            }
+            // 2. 异步同步到服务器
+            DataStore.syncToAPI(DataStore.KEYS.IDEAS, { ideas }, `${API_BASE_URL}/ideas/batch`,
+                (d) => JSON.stringify(d));
+            
+            showToast(`✅ 全部 ${saved.length} 个创意已保存到创意库`, 'success');
+            refreshIdeas();
         }
         
         // 开始工作流
@@ -2343,19 +2342,100 @@
         }
 
         // ============================================
-        // 创意库 API 操作
+        // DataStore - 本地持久化存储（localStorage）
+        // 在 Vercel 上写文件不持久，所以用 localStorage
+        // 同时尝试同步到 API（本地开发环境有效）
+        // ============================================
+        class DataStore {
+            static KEYS = {
+                IDEAS: 'rok_ideas',
+                REFERENCES: 'rok_references',
+                LAST_SYNC: 'rok_last_sync'
+            };
+            
+            // 读取
+            static get(key) {
+                try {
+                    const raw = localStorage.getItem(key);
+                    return raw ? JSON.parse(raw) : [];
+                } catch(e) {
+                    debugLog(`DataStore读取失败 ${key}: ${e.message}`);
+                    return [];
+                }
+            }
+            
+            // 写入（立即保存到localStorage，异步尝试同步到服务器）
+            static set(key, data) {
+                try {
+                    localStorage.setItem(key, JSON.stringify(data));
+                    debugLog(`DataStore已保存 ${key}: ${Array.isArray(data) ? data.length + '项' : 'ok'}`);
+                    return true;
+                } catch(e) {
+                    debugLog(`DataStore写入失败 ${key}: ${e.message}`);
+                    return false;
+                }
+            }
+            
+            // 从API获取初始种子数据（首次使用时）
+            static async seedFromAPI(key, apiUrl) {
+                // 检查localStorage是否已有数据
+                const existing = this.get(key);
+                if (existing && existing.length > 0) return existing;
+                
+                try {
+                    const res = await fetch(apiUrl, { 
+                        headers: { 'x-vercel-protection-bypass': VERCELL_BYPASS_SECRET }
+                    });
+                    const data = await res.json();
+                    const items = data.ideas || data.references || [];
+                    if (items.length > 0) {
+                        this.set(key, items);
+                        debugLog(`DataStore已从API载入种子数据: ${items.length}项`);
+                    }
+                    return items;
+                } catch(e) {
+                    debugLog(`DataStore从API载入失败: ${e.message}`);
+                    return this.get(key);
+                }
+            }
+            
+            // 异步同步到服务器
+            static async syncToAPI(key, data, apiSaveUrl, bodyBuilder) {
+                try {
+                    const body = bodyBuilder ? bodyBuilder(data) : JSON.stringify(data);
+                    const res = await fetch(apiSaveUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'x-vercel-protection-bypass': VERCELL_BYPASS_SECRET },
+                        body
+                    });
+                    const result = await res.json();
+                    if (result.success) {
+                        this.setStorageSyncTime();
+                    }
+                    return result;
+                } catch(e) {
+                    debugLog(`DataStore同步到API失败: ${e.message}`);
+                    return { success: false, error: e.message };
+                }
+            }
+            
+            static setStorageSyncTime() {
+                try {
+                    localStorage.setItem(this.KEYS.LAST_SYNC, Date.now().toString());
+                } catch(e) {}
+            }
+        }
+
+        // ============================================
+        // 创意库操作 - localStorage 持久化
         // ============================================
         async function refreshIdeas() {
-            try {
-                const res = await fetch(`${API_BASE_URL}/ideas`, { headers: { 'x-vercel-protection-bypass': VERCELL_BYPASS_SECRET } });
-                const data = await res.json();
-                if (data.success) {
-                    renderIdeasGrid(data.ideas);
-                    document.getElementById('ideas-count').textContent = data.count;
-                }
-            } catch (e) {
-                debugLog('刷新创意库失败: ' + e.message);
+            let ideas = DataStore.get(DataStore.KEYS.IDEAS);
+            if (!ideas || ideas.length === 0) {
+                ideas = await DataStore.seedFromAPI(DataStore.KEYS.IDEAS, `${API_BASE_URL}/ideas`);
             }
+            renderIdeasGrid(ideas);
+            document.getElementById('ideas-count').textContent = ideas.length;
         }
 
         function renderIdeasGrid(ideas) {
@@ -2411,22 +2491,33 @@
         }
 
         async function saveCurrentIdeasToLibrary() {
-            try {
-                const res = await fetch(`${API_BASE_URL}/ideas/batch`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'x-vercel-protection-bypass': VERCELL_BYPASS_SECRET },
-                    body: JSON.stringify({ ideas })
-                });
-                const data = await res.json();
-                if (data.success) {
-                    showToast(`✅ ${data.message}`, 'success');
-                    refreshIdeas();
-                } else {
-                    showToast('❌ 保存失败: ' + (data.error || '未知错误'), 'error');
+            // 1. 保存到 localStorage
+            const stored = DataStore.get(DataStore.KEYS.IDEAS);
+            let saved = 0;
+            ideas.forEach(idea => {
+                const exists = stored.some(s => s.title === idea.title);
+                if (!exists) {
+                    stored.push({
+                        id: generateId('idea'),
+                        title: idea.title,
+                        description: idea.description,
+                        tags: idea.tags || [],
+                        characters: idea.characters || [],
+                        platform: idea.platform || '抖音/快手',
+                        duration: idea.duration || '60-90秒',
+                        createdAt: new Date().toISOString(),
+                        source: 'ai-generated'
+                    });
+                    saved++;
                 }
-            } catch (e) {
-                showToast('❌ 保存失败: ' + e.message, 'error');
-            }
+            });
+            DataStore.set(DataStore.KEYS.IDEAS, stored);
+            
+            // 2. 异步同步到服务器
+            DataStore.syncToAPI(DataStore.KEYS.IDEAS, { ideas }, `${API_BASE_URL}/ideas/batch`, (d) => JSON.stringify(d));
+            
+            showToast(`✅ ${saved > 0 ? '已保存 ' + saved + ' 个创意' : '无新创意需要保存'}`, 'success');
+            refreshIdeas();
         }
 
         // 新增创意模态框
@@ -2455,29 +2546,26 @@
                 return;
             }
             
-            try {
-                const res = await fetch(`${API_BASE_URL}/ideas`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'x-vercel-protection-bypass': VERCELL_BYPASS_SECRET },
-                    body: JSON.stringify({
-                        title, description: desc,
-                        tags: ideaTags,
-                        characters: chars ? chars.split(/[,，\s]+/).filter(Boolean) : [],
-                        platform, duration,
-                        source: 'manual'
-                    })
-                });
-                const data = await res.json();
-                if (data.success) {
-                    showToast('✅ 创意已保存', 'success');
-                    closeModal('idea-modal');
-                    refreshIdeas();
-                } else {
-                    showToast('❌ 保存失败: ' + (data.error || '未知错误'), 'error');
-                }
-            } catch (e) {
-                showToast('❌ 保存失败: ' + e.message, 'error');
-            }
+            // 1. 保存到 localStorage
+            const newItem = {
+                id: generateId('idea'),
+                title, description: desc,
+                tags: ideaTags,
+                characters: chars ? chars.split(/[,，\s]+/).filter(Boolean) : [],
+                platform, duration,
+                createdAt: new Date().toISOString(),
+                source: 'manual'
+            };
+            const stored = DataStore.get(DataStore.KEYS.IDEAS);
+            stored.push(newItem);
+            DataStore.set(DataStore.KEYS.IDEAS, stored);
+            
+            // 2. 异步同步到服务器
+            DataStore.syncToAPI(DataStore.KEYS.IDEAS, newItem, `${API_BASE_URL}/ideas`, (d) => JSON.stringify(d));
+            
+            showToast('✅ 创意已保存', 'success');
+            closeModal('idea-modal');
+            refreshIdeas();
         }
 
         // 使用创意库中的创意
@@ -2489,18 +2577,23 @@
         // 删除单个创意
         async function deleteIdea(id) {
             if (!confirm('确定要删除这个创意吗？')) return;
-            try {
-                const res = await fetch(`${API_BASE_URL}/ideas/${id}`, {
-                    method: 'DELETE',
-                    headers: { 'x-vercel-protection-bypass': VERCELL_BYPASS_SECRET }
-                });
-                const data = await res.json();
-                if (data.success) {
-                    showToast('✅ 创意已删除', 'success');
-                    refreshIdeas();
-                }
-            } catch (e) {
-                showToast('❌ 删除失败: ' + e.message, 'error');
+            
+            // 1. 从 localStorage 删除
+            let stored = DataStore.get(DataStore.KEYS.IDEAS);
+            const before = stored.length;
+            stored = stored.filter(i => i.id !== id);
+            if (stored.length < before) {
+                DataStore.set(DataStore.KEYS.IDEAS, stored);
+                showToast('✅ 创意已删除', 'success');
+                refreshIdeas();
+                
+                // 2. 异步同步到服务器
+                try {
+                    await fetch(`${API_BASE_URL}/ideas/${id}`, {
+                        method: 'DELETE',
+                        headers: { 'x-vercel-protection-bypass': VERCELL_BYPASS_SECRET }
+                    });
+                } catch(e) {}
             }
         }
 
@@ -2518,16 +2611,12 @@
         // 资料库 API 操作
         // ============================================
         async function refreshReferences() {
-            try {
-                const res = await fetch(`${API_BASE_URL}/references`, { headers: { 'x-vercel-protection-bypass': VERCELL_BYPASS_SECRET } });
-                const data = await res.json();
-                if (data.success) {
-                    renderRefsGrid(data.references);
-                    document.getElementById('refs-count').textContent = data.count;
-                }
-            } catch (e) {
-                debugLog('刷新资料库失败: ' + e.message);
+            let refs = DataStore.get(DataStore.KEYS.REFERENCES);
+            if (!refs || refs.length === 0) {
+                refs = await DataStore.seedFromAPI(DataStore.KEYS.REFERENCES, `${API_BASE_URL}/references`);
             }
+            renderRefsGrid(refs);
+            document.getElementById('refs-count').textContent = refs.length;
         }
 
         function renderRefsGrid(refs) {
@@ -2626,48 +2715,58 @@
                 return;
             }
             
-            try {
-                const endpoint = type === 'file' ? '/references/upload' : '/references';
-                const res = await fetch(`${API_BASE_URL}${endpoint}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'x-vercel-protection-bypass': VERCELL_BYPASS_SECRET },
-                    body: JSON.stringify({ title, content: type === 'file' ? content : content, type })
-                });
-                const data = await res.json();
-                if (data.success) {
-                    showToast('✅ 参考资料已保存', 'success');
-                    closeModal('ref-modal');
-                    refreshReferences();
-                    uploadedRefContent = '';
-                } else {
-                    showToast('❌ 保存失败: ' + (data.error || '未知错误'), 'error');
-                }
-            } catch (e) {
-                showToast('❌ 保存失败: ' + e.message, 'error');
-            }
+            // 1. 保存到 localStorage
+            const newItem = {
+                id: generateId('ref'),
+                title,
+                content,
+                type: type === 'file' ? 'file' : 'text',
+                createdAt: new Date().toISOString()
+            };
+            const stored = DataStore.get(DataStore.KEYS.REFERENCES);
+            stored.push(newItem);
+            DataStore.set(DataStore.KEYS.REFERENCES, stored);
+            
+            // 2. 异步同步到服务器
+            const endpoint = type === 'file' ? '/references/upload' : '/references';
+            DataStore.syncToAPI(DataStore.KEYS.REFERENCES, newItem, `${API_BASE_URL}${endpoint}`, (d) => JSON.stringify(d));
+            
+            showToast('✅ 参考资料已保存', 'success');
+            closeModal('ref-modal');
+            refreshReferences();
+            uploadedRefContent = '';
         }
 
         // 删除参考资料
         async function deleteReference(id) {
             if (!confirm('确定要删除这份资料吗？')) return;
-            try {
-                const res = await fetch(`${API_BASE_URL}/references/${id}`, {
-                    method: 'DELETE',
-                    headers: { 'x-vercel-protection-bypass': VERCELL_BYPASS_SECRET }
-                });
-                const data = await res.json();
-                if (data.success) {
-                    showToast('✅ 资料已删除', 'success');
-                    refreshReferences();
-                }
-            } catch (e) {
-                showToast('❌ 删除失败: ' + e.message, 'error');
+            
+            let stored = DataStore.get(DataStore.KEYS.REFERENCES);
+            const before = stored.length;
+            stored = stored.filter(r => r.id !== id);
+            if (stored.length < before) {
+                DataStore.set(DataStore.KEYS.REFERENCES, stored);
+                showToast('✅ 资料已删除', 'success');
+                refreshReferences();
+                
+                try {
+                    await fetch(`${API_BASE_URL}/references/${id}`, {
+                        method: 'DELETE',
+                        headers: { 'x-vercel-protection-bypass': VERCELL_BYPASS_SECRET }
+                    });
+                } catch(e) {}
             }
         }
 
         // ============================================
         // 工具函数
         // ============================================
+        function generateId(prefix) {
+            const timestamp = Date.now().toString(36);
+            const random = Math.random().toString(36).substring(2, 6);
+            return `${prefix}-${timestamp}-${random}`;
+        }
+
         function escapeHtml(text) {
             if (!text) return '';
             const div = document.createElement('div');
