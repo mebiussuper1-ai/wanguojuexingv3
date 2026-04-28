@@ -5,6 +5,8 @@ const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
 const cheerio = require('cheerio');
+const fs = require('fs');
+const path = require('path');
 
 // ==================== 配置 ====================
 const PORT = process.env.PORT || 3001;
@@ -14,6 +16,111 @@ const LOG_LEVEL = process.env.LOG_LEVEL || 'info';
 // DeepSeek API 配置 - 从环境变量读取，支持Railway、Render等平台
 const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
 const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || 'sk-fa24b5b42cf949839f0e5a2063c00a6b';
+
+// ==================== 数据文件路径 ====================
+const DATA_DIR = path.join(__dirname, 'data');
+const IDEAS_FILE = path.join(DATA_DIR, 'ideas.json');
+const REFERENCES_FILE = path.join(DATA_DIR, 'references.json');
+
+// 确保data目录存在
+if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    log('info', '已创建data目录');
+}
+
+// ==================== 数据读写辅助函数 ====================
+
+// 读取创意库
+function readIdeas() {
+    try {
+        if (fs.existsSync(IDEAS_FILE)) {
+            const data = fs.readFileSync(IDEAS_FILE, 'utf-8');
+            return JSON.parse(data);
+        }
+        return [];
+    } catch (error) {
+        log('error', '读取创意库失败', { message: error.message });
+        return [];
+    }
+}
+
+// 写入创意库
+function writeIdeas(ideas) {
+    try {
+        fs.writeFileSync(IDEAS_FILE, JSON.stringify(ideas, null, 2), 'utf-8');
+        log('info', `创意库已更新，当前${ideas.length}条`);
+        // 同步到本地资料库文件夹
+        syncToLocalFolder('ideas.json', JSON.stringify(ideas, null, 2));
+        return true;
+    } catch (error) {
+        log('error', '写入创意库失败', { message: error.message });
+        return false;
+    }
+}
+
+// 读取资料库
+function readReferences() {
+    try {
+        if (fs.existsSync(REFERENCES_FILE)) {
+            const data = fs.readFileSync(REFERENCES_FILE, 'utf-8');
+            return JSON.parse(data);
+        }
+        return [];
+    } catch (error) {
+        log('error', '读取资料库失败', { message: error.message });
+        return [];
+    }
+}
+
+// 写入资料库
+function writeReferences(references) {
+    try {
+        fs.writeFileSync(REFERENCES_FILE, JSON.stringify(references, null, 2), 'utf-8');
+        log('info', `资料库已更新，当前${references.length}条`);
+        syncToLocalFolder('references.json', JSON.stringify(references, null, 2));
+        return true;
+    } catch (error) {
+        log('error', '写入资料库失败', { message: error.message });
+        return false;
+    }
+}
+
+// 同步到本地资料库文件夹（E:\万国觉醒资料库和创意库）
+function syncToLocalFolder(filename, content) {
+    try {
+        const localDir = path.join('E:\\万国觉醒资料库和创意库');
+        if (fs.existsSync(localDir)) {
+            fs.writeFileSync(path.join(localDir, filename), content, 'utf-8');
+            log('info', `已同步到本地资料库文件夹: ${filename}`);
+        }
+    } catch (error) {
+        // 同步失败不影响主要功能
+        log('warn', '同步到本地资料库文件夹失败', { message: error.message });
+    }
+}
+
+// 生成唯一ID
+function generateId(prefix) {
+    const timestamp = Date.now().toString(36);
+    const random = Math.random().toString(36).substring(2, 6);
+    return `${prefix}-${timestamp}-${random}`;
+}
+
+// 获取参考资料摘要文本（用于AI提示）
+function getReferenceSummary(limit = 5) {
+    const refs = readReferences();
+    if (refs.length === 0) return '';
+    const selected = refs.slice(0, limit);
+    return selected.map(r => `【${r.title}】${r.content}`).join('\n');
+}
+
+// 获取创意库摘要文本（用于AI提示）
+function getIdeasSummary(limit = 3) {
+    const ideas = readIdeas();
+    if (ideas.length === 0) return '';
+    const selected = ideas.slice(0, limit);
+    return selected.map(i => `【${i.title}】${i.description}`).join('\n');
+}
 
 // ==================== 调试信息 ====================
 console.log('🔧 环境配置检查:');
@@ -239,14 +346,28 @@ function getBasicRokInfo() {
     ];
 }
 
-// 生成创意
-async function generateIdeas(requirement, searchResults) {
-    const prompt = `你是一个专业的短视频内容策划专家。请基于以下《万国觉醒》游戏背景信息和用户要求，生成3个高质量的短剧创意。
+// 生成创意（支持引用资料库和创意库）
+async function generateIdeas(requirement, searchResults, useLibrary = true) {
+    // 获取资料库和创意库内容
+    let libraryContext = '';
+    if (useLibrary) {
+        const refSummary = getReferenceSummary(5);
+        const ideaSummary = getIdeasSummary(3);
+        if (refSummary) {
+            libraryContext += `\n\n【资料库参考内容】\n${refSummary}`;
+        }
+        if (ideaSummary) {
+            libraryContext += `\n\n【历史创意参考】\n${ideaSummary}`;
+        }
+    }
+    
+    const prompt = `你是一个专业的短视频内容策划专家。请基于以下《万国觉醒》游戏背景信息和用户要求，生成3个高质量的短剧创意。${libraryContext ? '\n\n注意：下面提供了资料库中的背景资料和创意库中的历史创意，请参考它们生成新的、不重复的创意。' : ''}
 
 游戏背景信息（来自实时搜索）：
 ${searchResults.join('\n')}
 
 用户要求：${requirement}
+${libraryContext}
 
 请生成3个不同的、有创意的短剧创意，每个创意包含：
 1. 标题 - 吸引人的标题
@@ -406,7 +527,11 @@ function generateSmartFallbackIdeas(requirement, searchResults) {
 
 // 生成脚本
 async function generateScripts(idea, requirement) {
+    // 获取资料库内容作为参考
+    const refSummary = getReferenceSummary(3);
+    
     const prompt = `你是一个专业的短视频脚本作家。请基于以下创意和用户要求，创作一个高质量、适合短视频平台的短剧脚本。
+${refSummary ? `\n\n【资料库参考内容】\n${refSummary}\n\n请注意参考以上资料库中的背景信息，确保脚本内容与游戏设定一致。` : ''}
 
 创意标题：${idea.title}
 创意描述：${idea.description}
@@ -534,7 +659,7 @@ function generateSmartFallbackScript(idea, requirement) {
 // 搜索并生成创意
 app.post('/api/generate-ideas', async (req, res) => {
     try {
-        const { requirement } = req.body;
+        const { requirement, useLibrary = true } = req.body;
         
         if (!requirement) {
             return res.status(400).json({ 
@@ -552,10 +677,10 @@ app.post('/api/generate-ideas', async (req, res) => {
             });
         }
         
-        log('info', `收到创意生成请求`, { length: requirement.length });
+        log('info', `收到创意生成请求`, { length: requirement.length, useLibrary });
         
         const searchResults = await searchRokContent(requirement);
-        const ideas = await generateIdeas(requirement, searchResults);
+        const ideas = await generateIdeas(requirement, searchResults, useLibrary);
         
         res.json({ 
             success: true, 
@@ -618,6 +743,184 @@ app.post('/api/generate-batch-scripts', async (req, res) => {
             fallback: true,
             timestamp: new Date().toISOString()
         });
+    }
+});
+
+// ==================== 创意库 API ====================
+
+// 获取所有创意
+app.get('/api/ideas', (req, res) => {
+    try {
+        const ideas = readIdeas();
+        res.json({ success: true, ideas, count: ideas.length });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// 保存单个创意
+app.post('/api/ideas', (req, res) => {
+    try {
+        const { title, description, tags, characters, platform, duration, source } = req.body;
+        if (!title || !description) {
+            return res.status(400).json({ success: false, error: '标题和描述不能为空' });
+        }
+        
+        const ideas = readIdeas();
+        const newIdea = {
+            id: generateId('idea'),
+            title,
+            description,
+            tags: tags || [],
+            characters: characters || [],
+            platform: platform || '抖音/快手',
+            duration: duration || '60-90秒',
+            createdAt: new Date().toISOString(),
+            source: source || 'manual'
+        };
+        
+        ideas.push(newIdea);
+        writeIdeas(ideas);
+        
+        res.json({ success: true, idea: newIdea, message: '创意已保存' });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// 批量保存创意（从AI生成结果一键保存）
+app.post('/api/ideas/batch', (req, res) => {
+    try {
+        const { ideas: newIdeas } = req.body;
+        if (!newIdeas || !Array.isArray(newIdeas) || newIdeas.length === 0) {
+            return res.status(400).json({ success: false, error: '请提供有效的创意列表' });
+        }
+        
+        const existingIdeas = readIdeas();
+        const saved = [];
+        
+        newIdeas.forEach(idea => {
+            const newIdea = {
+                id: generateId('idea'),
+                title: idea.title || '未命名创意',
+                description: idea.description || idea.desc || '',
+                tags: idea.tags || idea.keywords || [],
+                characters: idea.characters || idea.roles || [],
+                platform: idea.platform || '抖音/快手',
+                duration: idea.duration || '60-90秒',
+                createdAt: new Date().toISOString(),
+                source: 'ai-generated'
+            };
+            existingIdeas.push(newIdea);
+            saved.push(newIdea);
+        });
+        
+        writeIdeas(existingIdeas);
+        res.json({ success: true, saved, count: saved.length, message: `已保存 ${saved.length} 条创意` });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// 删除创意
+app.delete('/api/ideas/:id', (req, res) => {
+    try {
+        const { id } = req.params;
+        let ideas = readIdeas();
+        const before = ideas.length;
+        ideas = ideas.filter(i => i.id !== id);
+        
+        if (ideas.length === before) {
+            return res.status(404).json({ success: false, error: '创意未找到' });
+        }
+        
+        writeIdeas(ideas);
+        res.json({ success: true, message: '创意已删除' });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ==================== 资料库 API ====================
+
+// 获取所有参考资料
+app.get('/api/references', (req, res) => {
+    try {
+        const references = readReferences();
+        res.json({ success: true, references, count: references.length });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// 保存一条参考资料
+app.post('/api/references', (req, res) => {
+    try {
+        const { title, content, type } = req.body;
+        if (!title || !content) {
+            return res.status(400).json({ success: false, error: '标题和内容不能为空' });
+        }
+        
+        const references = readReferences();
+        const newRef = {
+            id: generateId('ref'),
+            title,
+            content,
+            type: type || 'text',
+            createdAt: new Date().toISOString()
+        };
+        
+        references.push(newRef);
+        writeReferences(references);
+        
+        res.json({ success: true, reference: newRef, message: '参考资料已保存' });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// 上传文件作为资料（Base64方式）
+app.post('/api/references/upload', (req, res) => {
+    try {
+        const { title, content, type } = req.body;
+        if (!title || !content) {
+            return res.status(400).json({ success: false, error: '标题和内容不能为空' });
+        }
+        
+        const references = readReferences();
+        const newRef = {
+            id: generateId('ref'),
+            title,
+            content: typeof content === 'object' ? JSON.stringify(content) : content,
+            type: type || 'file',
+            createdAt: new Date().toISOString()
+        };
+        
+        references.push(newRef);
+        writeReferences(references);
+        
+        res.json({ success: true, reference: newRef, message: '文件已上传到资料库' });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// 删除参考资料
+app.delete('/api/references/:id', (req, res) => {
+    try {
+        const { id } = req.params;
+        let references = readReferences();
+        const before = references.length;
+        references = references.filter(r => r.id !== id);
+        
+        if (references.length === before) {
+            return res.status(404).json({ success: false, error: '参考资料未找到' });
+        }
+        
+        writeReferences(references);
+        res.json({ success: true, message: '参考资料已删除' });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
     }
 });
 
@@ -690,7 +993,15 @@ app.use((req, res) => {
             'GET  /api/health',
             'POST /api/generate-ideas',
             'POST /api/generate-batch-scripts',
-            'POST /api/test-search'
+            'POST /api/test-search',
+            'GET  /api/ideas',
+            'POST /api/ideas',
+            'POST /api/ideas/batch',
+            'DELETE /api/ideas/:id',
+            'GET  /api/references',
+            'POST /api/references',
+            'POST /api/references/upload',
+            'DELETE /api/references/:id'
         ]
     });
 });
