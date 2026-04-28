@@ -24,20 +24,10 @@ console.log(`   DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY ? '已设置' + (DEEPSEEK_A
 console.log(`   ALLOWED_ORIGINS 环境变量: ${process.env.ALLOWED_ORIGINS || '未设置，使用默认值'}`);
 console.log('🔧 开始初始化服务器...');
 
-// CORS配置 - 从环境变量读取允许的域名
+// CORS配置 - 在Vercel环境中允许所有来源，可通过环境变量自定义
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS 
     ? process.env.ALLOWED_ORIGINS.split(',') 
-    : [
-        'http://localhost:3000', 
-        'http://localhost:3001', 
-        'https://mebiussuper1-ai.github.io',
-        'https://wanguojuexingv3-7lnv-ipxms0av1-mebiussuper1-6563s-projects.vercel.app',
-        'https://wanguojuexingv3-7lnv.vercel.app',
-        'https://wanguojuexingv3-six.vercel.app',
-        'https://wanguojuexingv3-fqplkex2t-mebiussuper1-6563s-projects.vercel.app',
-        'https://wanguojuexingv3-git-main-mebiussuper1-6563s-projects.vercel.app',
-        'https://wanguojuexingv3.vercel.app'
-      ];
+    : ['*'];
 
 const app = express();
 

@@ -1,5 +1,5 @@
-// Vercel Serverless Function 入口点
-// 包装 Express 应用以在 Serverless 环境中运行
+// Vercel Catch-All Serverless Function
+// 处理所有 /api/* 路由，包装 Express 应用
 
 console.log('🚀 Vercel Serverless Function 启动中...');
 console.log('='.repeat(60));
@@ -11,7 +11,6 @@ try {
   console.log(`   VERCEL: ${process.env.VERCEL ? '是' : '否'}`);
   console.log(`   VERCEL_ENV: ${process.env.VERCEL_ENV || '未设置'}`);
   console.log(`   VERCEL_URL: ${process.env.VERCEL_URL || '未设置'}`);
-  console.log(`   PORT: ${process.env.PORT || '未设置'}`);
   console.log(`   DEEPSEEK_API_KEY: ${process.env.DEEPSEEK_API_KEY ? '已设置' : '未设置'}`);
   
   // 检查关键依赖
@@ -42,12 +41,11 @@ try {
       console.log(`   User-Agent: ${req.headers['user-agent'] || '未设置'}`);
       console.log(`   Origin: ${req.headers['origin'] || '未设置'}`);
       
-      // 添加响应头
-      res.setHeader('X-Powered-By', 'Vercel + Express');
-      res.setHeader('Server', 'Vercel');
+      // 添加 CORS 响应头 - 允许所有来源
       res.setHeader('Access-Control-Allow-Origin', '*');
-      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+      res.setHeader('Access-Control-Max-Age', '86400');
       
       // 处理预检请求
       if (req.method === 'OPTIONS') {
@@ -55,12 +53,14 @@ try {
         return res.status(200).end();
       }
       
-      // 在Serverless环境中，Vercel会移除/api前缀，我们需要将其添加回去
-      // 这样Express应用可以一直使用/api前缀的路由
+      // Vercel catch-all 函数会把 URL 转换成 /api/health -> /health
+      // 我们需要确保 Express 应用接收到正确带 /api 前缀的路由
       const originalUrl = req.url;
       if (!originalUrl.startsWith('/api/')) {
         req.url = '/api' + (originalUrl === '/' ? '' : originalUrl);
         console.log(`🔧 重写请求路径: ${originalUrl} -> ${req.url}`);
+      } else {
+        console.log(`🔧 请求路径已包含 /api 前缀: ${originalUrl}`);
       }
       
       // 将请求传递给 Express 应用
