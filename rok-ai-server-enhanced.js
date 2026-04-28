@@ -924,6 +924,34 @@ app.delete('/api/references/:id', (req, res) => {
     }
 });
 
+// ==================== 永久保存 API ====================
+
+// 批量同步数据到本地文件（导出/备份）
+app.post('/api/sync-data', (req, res) => {
+    try {
+        const { ideas, references } = req.body;
+        let saved = [];
+        
+        if (ideas && Array.isArray(ideas)) {
+            writeIdeas(ideas);
+            saved.push(`创意库: ${ideas.length}条`);
+        }
+        if (references && Array.isArray(references)) {
+            writeReferences(references);
+            saved.push(`资料库: ${references.length}条`);
+        }
+        
+        res.json({ 
+            success: true, 
+            message: `已同步: ${saved.join(', ')}`,
+            timestamp: new Date().toISOString(),
+            note: '本地已保存，请运行 sync.bat 或手动 git commit 推送到 GitHub 永久保存'
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // 测试搜索功能
 app.post('/api/test-search', async (req, res) => {
     try {
@@ -1001,7 +1029,8 @@ app.use((req, res) => {
             'GET  /api/references',
             'POST /api/references',
             'POST /api/references/upload',
-            'DELETE /api/references/:id'
+            'DELETE /api/references/:id',
+            'POST /api/sync-data'
         ]
     });
 });

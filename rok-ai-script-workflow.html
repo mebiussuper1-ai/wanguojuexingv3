@@ -2805,6 +2805,81 @@
         }
 
         // ============================================
+        // 数据导出/导入（永久保存方案）
+        // ============================================
+        function downloadData() {
+            const ideas = DataStore.get(DataStore.KEYS.IDEAS);
+            const refs = DataStore.get(DataStore.KEYS.REFERENCES);
+            const exportData = {
+                version: '1.0',
+                exportedAt: new Date().toISOString(),
+                ideas,
+                references: refs
+            };
+            const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `wanguojuexing-data-${new Date().toISOString().slice(0,10)}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast('📥 数据已导出！请保存好该文件', 'success');
+        }
+
+        function importData() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        if (data.ideas) {
+                            DataStore.set(DataStore.KEYS.IDEAS, data.ideas);
+                        }
+                        if (data.references) {
+                            DataStore.set(DataStore.KEYS.REFERENCES, data.references);
+                        }
+                        showToast('✅ 数据已导入！请刷新页面查看', 'success');
+                        setTimeout(() => location.reload(), 1500);
+                    } catch(err) {
+                        showToast('❌ 导入失败：无效的数据文件', 'error');
+                    }
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        }
+
+        // 导出/导入按钮渲染到资料库面板头部
+        function appendDataToolButtons() {
+            const header = document.querySelector('#panel-references .library-header .library-actions');
+            if (header) {
+                const exportBtn = document.createElement('button');
+                exportBtn.className = 'btn-library btn-library-outline';
+                exportBtn.innerHTML = '<i class="fas fa-download"></i> 导出数据';
+                exportBtn.onclick = downloadData;
+                exportBtn.style.fontSize = '0.85rem';
+                exportBtn.style.padding = '8px 14px';
+                
+                const importBtn = document.createElement('button');
+                importBtn.className = 'btn-library btn-library-outline';
+                importBtn.innerHTML = '<i class="fas fa-upload"></i> 导入数据';
+                importBtn.onclick = importData;
+                importBtn.style.fontSize = '0.85rem';
+                importBtn.style.padding = '8px 14px';
+                
+                header.appendChild(exportBtn);
+                header.appendChild(importBtn);
+            }
+        }
+
+        // ============================================
         // 参考引用选择系统
         // ============================================
         const SELECTION = {
@@ -2901,6 +2976,7 @@
             // 初始化参考选择UI
             setTimeout(() => {
                 SELECTION.updateUI();
+                appendDataToolButtons();
                 refreshIdeas();
                 refreshReferences();
             }, 1000);
